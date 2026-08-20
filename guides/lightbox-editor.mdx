@@ -145,6 +145,31 @@ A group of radio buttons. Provide an `options` array identical in structure to `
 }
 ```
 
+### `resources`
+
+A resource assignment control for associating the task with one or more resources. Used with the resources configuration of DHTMLX Gantt PRO. Assign `map_to` to the resource-property field:
+
+```js
+{
+  name: "resources",
+  type: "resources",
+  map_to: "owner_id",
+  height: 60
+}
+```
+
+### `constraint`
+
+A scheduling-constraint control that lets the user set a constraint type and date for auto-scheduling. Used with the constraint/auto-scheduling feature of DHTMLX Gantt PRO:
+
+```js
+{
+  name: "constraint",
+  type: "constraint",
+  map_to: "auto"
+}
+```
+
 ## Full Custom Lightbox Example
 
 The example below adds a text area, a priority dropdown, and a combined time/duration control:

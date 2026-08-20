@@ -1,7 +1,7 @@
 ---
-title: "Configuring Grid Columns in DHTMLX Gantt"
+title: "Configure and Customize Grid Columns in DHTMLX Gantt"
 sidebarTitle: "Grid Columns"
-description: "Learn how to define, customize, and resize grid columns in DHTMLX Gantt using gantt.config.columns and the IColumnItem interface."
+description: "Learn how to define, customize, and resize grid columns in DHTMLX Gantt using gantt.config.columns and the IColumnItem interface fields."
 ---
 
 The grid panel on the left side of a Gantt chart is built from an array of column descriptors. Each descriptor controls what data the column displays, how it looks, and whether a user can resize it. You configure these columns via `gantt.config.columns` — an array of `IColumnItem` objects — before calling `gantt.init()`.
@@ -41,7 +41,7 @@ Every entry in `gantt.config.columns` must satisfy the following shape (all fiel
   Horizontal text alignment of cell content. Defaults to `"left"`.
 </ParamField>
 
-<ParamField path="width" type="number | string">
+<ParamField path="width" type='number | "*"'>
   Column width in pixels, or `"*"` to take up remaining space.
 </ParamField>
 
@@ -224,5 +224,5 @@ gantt.config.columns = [
 ```
 
 <Note>
-  `autofit` ignores individual `width` values (except for columns with a fixed numeric width that you explicitly set). Columns marked `width: "*"` share whatever space is left over after fixed columns are measured.
+  When `autofit` is `true`, columns automatically share the available grid width equally, overriding per-column `width` values. Use this mode when the grid container has a fixed size and you want equal distribution across all columns.
 </Note>

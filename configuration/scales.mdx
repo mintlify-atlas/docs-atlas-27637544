@@ -1,5 +1,5 @@
 ---
-title: "Configuring Timeline Scales in DHTMLX Gantt"
+title: "Timeline Scale Configuration Guide for DHTMLX Gantt"
 sidebarTitle: "Scales"
 description: "Configure single and multi-level timeline scales in DHTMLX Gantt using gantt.config.scales, time units, format functions, and the zoom extension."
 ---
@@ -19,7 +19,15 @@ Every entry in `gantt.config.scales` follows this shape (all fields are optional
 </ParamField>
 
 <ParamField path="format" type="string | ((date: Date) => string)">
-  The column header label. Accepts a strftime-style pattern string (e.g., `"%d %M"`) or a formatter function that receives the cell start `Date` and returns a string. Also aliased as `date` for backward compatibility.
+  The column header label. Accepts a strftime-style pattern string (e.g., `"%d %M"`) or a formatter function that receives the cell start `Date` and returns a string.
+</ParamField>
+
+<ParamField path="template" type="string | ((date: Date) => string)">
+  Alias of `format`. Accepted for backward compatibility — use `format` in new code.
+</ParamField>
+
+<ParamField path="date" type="string | ((date: Date) => string)">
+  Alias of `format`. Accepted for backward compatibility — use `format` in new code.
 </ParamField>
 
 <ParamField path="css" type="string | ((date: Date) => string)">

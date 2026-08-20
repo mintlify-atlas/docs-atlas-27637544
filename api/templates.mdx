@@ -199,6 +199,36 @@ gantt.templates.task_row_class = function(start, end, task) {
 
 ---
 
+### `task_unscheduled_time(task)` → `string`
+
+Returns the text shown for tasks with no scheduled dates (unscheduled tasks). By default returns an empty string. Used by `task_time` and `date_grid` when `gantt.config.show_unscheduled` is `true`.
+
+```js
+gantt.templates.task_unscheduled_time = function(task) {
+  return "Unscheduled";
+};
+```
+
+---
+
+### `baseline_text(task, baseline, index)` → `string`
+
+Returns text rendered inside a baseline bar. Defaults to an empty string. Only relevant when the baselines feature is enabled.
+
+| Parameter | Type | Description |
+|---|---|---|
+| `task` | `ITask` | The parent task object |
+| `baseline` | `object` | The baseline data object |
+| `index` | `number` | Index of this baseline among the task's baselines |
+
+```js
+gantt.templates.baseline_text = function(task, baseline, index) {
+  return "B" + (index + 1);
+};
+```
+
+---
+
 ## Tooltip templates
 
 ### `tooltip_text(start, end, task)` → `string`
@@ -233,6 +263,68 @@ gantt.templates.tooltip_date_format = gantt.date.date_to_str("%d %b %Y");
 ---
 
 ## Grid templates
+
+### `grid_indent(item)` → `string`
+
+Returns the HTML for a single indentation unit in the tree column. By default renders a `<div class='gantt_tree_indent'>`. Override to customize indentation width or style.
+
+```js
+gantt.templates.grid_indent = function(item) {
+  return "<div class='gantt_tree_indent' style='width:20px'></div>";
+};
+```
+
+---
+
+### `grid_folder(item)` → `string`
+
+Returns the HTML icon shown for project/folder tasks in the tree column. Renders an open or closed folder icon depending on `item.$open`.
+
+```js
+gantt.templates.grid_folder = function(item) {
+  return "<div class='gantt_tree_icon gantt_folder_" +
+    (item.$open ? "open" : "closed") + "'></div>";
+};
+```
+
+---
+
+### `grid_file(item)` → `string`
+
+Returns the HTML icon shown for leaf tasks (tasks without children) in the tree column. Defaults to a file icon.
+
+```js
+gantt.templates.grid_file = function(item) {
+  return "<div class='gantt_tree_icon gantt_file'></div>";
+};
+```
+
+---
+
+### `grid_open(item)` → `string`
+
+Returns the HTML for the expand/collapse toggle arrow in the tree column. Shows an open or close arrow depending on `item.$open`.
+
+```js
+gantt.templates.grid_open = function(item) {
+  return "<div class='gantt_tree_icon gantt_" +
+    (item.$open ? "close" : "open") + "'></div>";
+};
+```
+
+---
+
+### `grid_blank(item)` → `string`
+
+Returns the HTML for blank spacing in the tree column used when a row has no icon. Defaults to a blank `gantt_blank` element.
+
+```js
+gantt.templates.grid_blank = function(item) {
+  return "<div class='gantt_tree_icon gantt_blank'></div>";
+};
+```
+
+---
 
 ### `grid_row_class(start, end, task)` → `string`
 
@@ -366,6 +458,60 @@ gantt.templates.timeline_cell_content = function(task, date) {
 ---
 
 ## Link templates
+
+### `link_description(link)` → `string`
+
+Returns HTML shown in the link tooltip or confirmation popup. Defaults to a string with the source and target task names.
+
+| Parameter | Type | Description |
+|---|---|---|
+| `link` | `ILink` | The link object |
+
+```js
+gantt.templates.link_description = function(link) {
+  const from = gantt.getTask(link.source);
+  const to   = gantt.getTask(link.target);
+  return "<b>" + from.text + "</b> &ndash; <b>" + to.text + "</b>";
+};
+```
+
+---
+
+### `drag_link(from, from_start, to, to_start)` → `string`
+
+Returns the HTML content of the tooltip shown while the user is dragging to create a new dependency link. Defaults to showing source and target task names.
+
+| Parameter | Type | Description |
+|---|---|---|
+| `from` | `TaskID` | ID of the source task |
+| `from_start` | `boolean` | Whether the drag originates from the start endpoint |
+| `to` | `TaskID \| null` | ID of the target task (or `null` if not yet hovering a target) |
+| `to_start` | `boolean` | Whether the drag points to the target's start endpoint |
+
+```js
+gantt.templates.drag_link = function(from, from_start, to, to_start) {
+  const fromTask = gantt.getTask(from);
+  return "<b>" + fromTask.text + "</b>";
+};
+```
+
+---
+
+### `drag_link_class(from, from_start, to, to_start)` → `string`
+
+Returns the CSS class applied to the drag-link tooltip element. By default returns `"gantt_link_tooltip"` plus `"gantt_link_allow"` or `"gantt_link_deny"` depending on whether the link is valid.
+
+```js
+gantt.templates.drag_link_class = function(from, from_start, to, to_start) {
+  if (from && to) {
+    const allowed = gantt.isLinkAllowed(from, to, from_start, to_start);
+    return "gantt_link_tooltip " + (allowed ? "gantt_link_allow" : "gantt_link_deny");
+  }
+  return "gantt_link_tooltip";
+};
+```
+
+---
 
 ### `link_class(link)` → `string`
 

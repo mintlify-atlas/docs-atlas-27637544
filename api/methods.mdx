@@ -648,6 +648,39 @@ gantt.ext.export_api.importFromMSProject({
 });
 ```
 
+---
+
+### `gantt.ext.export_api.exportToJSON(config?)`
+
+Exports the full chart configuration and data as a JSON file via the DHTMLX export service.
+
+```js
+gantt.ext.export_api.exportToJSON({ name: "project.json" });
+```
+
+---
+
+### `gantt.ext.export_api.exportToPrimaveraP6(config?)`
+
+Exports the chart as a Primavera P6 XML file. Calls `exportToMSProject` internally with `type: "primaveraP6"`.
+
+```js
+gantt.ext.export_api.exportToPrimaveraP6({ name: "project_p6.xml" });
+```
+
+---
+
+### `gantt.ext.export_api.importFromPrimaveraP6(config)`
+
+Imports task data from a Primavera P6 XML file via the export service.
+
+```js
+gantt.ext.export_api.importFromPrimaveraP6({
+  data:     fileInputElement.files[0],
+  callback: function(result) { gantt.parse(result); }
+});
+```
+
 <Note>
-  `gantt.exportToPDF`, `gantt.exportToPNG`, `gantt.exportToExcel`, `gantt.exportToICal`, and `gantt.exportToMSProject` are convenience aliases added directly onto the gantt object and call the same underlying `gantt.ext.export_api` methods.
+  The following convenience aliases are added directly onto the `gantt` object and call the same underlying `gantt.ext.export_api` methods: `gantt.exportToPDF`, `gantt.exportToPNG`, `gantt.exportToExcel`, `gantt.exportToICal`, `gantt.exportToJSON`, `gantt.exportToMSProject`, `gantt.exportToPrimaveraP6`, `gantt.importFromExcel`, `gantt.importFromMSProject`, and `gantt.importFromPrimaveraP6`.
 </Note>

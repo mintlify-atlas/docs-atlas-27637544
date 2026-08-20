@@ -151,7 +151,7 @@ gantt.config.date_format = "%Y-%m-%d";
 gantt.init("gantt_here");
 ```
 
-The `IGanttInitializationConfig` interface describes the optional settings object accepted by `Gantt.getGanttInstance()`:
+The `IGanttInitializationConfig` interface describes the optional settings object accepted by `Gantt.getGanttInstance()`. When `container` is supplied in the settings, `getGanttInstance()` calls `gantt.init()` internally — no separate `init()` call is needed:
 
 ```ts
 import { Gantt } from "dhtmlx-gantt";
@@ -164,8 +164,9 @@ const settings: IGanttInitializationConfig = {
     }
 };
 
+// getGanttInstance() calls gantt.init(container) automatically when
+// container is provided in settings — do not call chart.init() again.
 const chart = Gantt.getGanttInstance(settings);
-chart.init("gantt_here");
 ```
 
 <Note>

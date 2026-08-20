@@ -1,5 +1,5 @@
 ---
-title: "Customizing Gantt Chart Layout Structure"
+title: "DHTMLX Gantt Layout Configuration: Grids and Panels"
 sidebarTitle: "Layout"
 description: "Define multi-panel Gantt layouts with grids, timelines, resizers, and scrollbars using gantt.config.layout and the ILayout interfaces."
 ---
@@ -68,11 +68,11 @@ Rows contain columns; columns can in turn contain rows. Every leaf in the tree i
   </Accordion>
 
   <Accordion title="resizer">
-    A draggable divider between adjacent panels.
+    A draggable divider between adjacent panels. Set `resizer: true` to enable the drag handle.
 
     ```typescript
     interface ILayoutResizer {
-      resizer: true;
+      resizer: boolean;   // set to true to render a drag handle
       width: number;      // visual width of the drag handle in pixels
     }
     ```

@@ -1,7 +1,7 @@
 ---
 title: "DHTMLX Gantt Timescale Configuration and Zoom Extension"
 sidebarTitle: "Timescale & Zoom"
-description: "Configure single and dual-row Gantt timescales using gantt.config.scales, all TimeUnit values, and the gantt.ext.zoom API for programmatic and mouse-wheel zoom."
+description: "Configure Gantt timescales with gantt.config.scales, all TimeUnit values, and the gantt.ext.zoom API for programmatic and mouse-wheel zoom."
 ---
 
 The timescale is the horizontal header of the Gantt chart. It shows time units as columns and determines how wide each day, week, or month appears on the chart. DHTMLX Gantt lets you render a single-row scale or stack multiple rows (for example, months above days), and the built-in `gantt.ext.zoom` extension lets you switch between scale configurations at runtime — including through mouse-wheel interaction.
@@ -21,6 +21,13 @@ interface Scale {
   css?:          string | ((date: Date) => any); // per-cell CSS class
   sticky?:       boolean;                        // keep label visible while cell is wider than viewport
   column_width?: number | null;                  // fixed px width per cell (bottom scale only)
+  projection?:   ScaleProjectionMode | null;     // working-hours bar-sizing mode
+}
+
+// ScaleProjectionMode lets day/week scales size bars by working hours
+interface ScaleProjectionMode {
+  source: "taskCalendar" | "fixedHours";
+  hours?: string[] | number[];
 }
 ```
 
@@ -134,6 +141,7 @@ interface ITimelineZoomConfig {
 
 interface IZoomLevel {
   name?:             string;    // level name — usable with setLevel("name")
+  label?:            string;    // optional display label for the level
   scales:            Scale[];   // the gantt.config.scales value for this level
   scale_height?:     number;    // scale header height for this level
   min_column_width?: number;    // minimum column width for this level
@@ -279,23 +287,32 @@ gantt.ext.zoom.init({
   minColumnWidth: 80,
   maxColumnWidth: 150,
   levels: [
-    [
-      { unit: "month", format: "%M %Y", step: 1 },
-      { unit: "week",  step: 1, format: function(date) {
-          var dateToStr = gantt.date.date_to_str("%d %M");
-          var endDate   = gantt.date.add(date, 7 - date.getDay(), "day");
-          var weekNum   = gantt.date.date_to_str("%W")(date);
-          return "Week #" + weekNum + ", " + dateToStr(date) + " – " + dateToStr(endDate);
-      }}
-    ],
-    [
-      { unit: "month", format: "%M %Y", step: 1 },
-      { unit: "day",   format: "%d %M", step: 1 }
-    ],
-    [
-      { unit: "day",  format: "%d %M", step: 1  },
-      { unit: "hour", format: "%H:%i", step: 1  }
-    ]
+    {
+      name: "week",
+      scales: [
+        { unit: "month", format: "%M %Y", step: 1 },
+        { unit: "week",  step: 1, format: function(date) {
+            var dateToStr = gantt.date.date_to_str("%d %M");
+            var endDate   = gantt.date.add(date, 7 - date.getDay(), "day");
+            var weekNum   = gantt.date.date_to_str("%W")(date);
+            return "Week #" + weekNum + ", " + dateToStr(date) + " – " + dateToStr(endDate);
+        }}
+      ]
+    },
+    {
+      name: "day",
+      scales: [
+        { unit: "month", format: "%M %Y", step: 1 },
+        { unit: "day",   format: "%d %M", step: 1 }
+      ]
+    },
+    {
+      name: "hour",
+      scales: [
+        { unit: "day",  format: "%d %M", step: 1 },
+        { unit: "hour", format: "%H:%i", step: 1 }
+      ]
+    }
   ],
   startDate: new Date(2026, 0, 1),
   endDate:   new Date(2026, 11, 31),

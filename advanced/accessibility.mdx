@@ -1,5 +1,5 @@
 ---
-title: Accessibility, WAI-ARIA, and Keyboard Navigation
+title: "Accessibility: WAI-ARIA and Keyboard Navigation in Gantt"
 sidebarTitle: Accessibility
 description: Configure WAI-ARIA support, keyboard navigation, touch input, and CSP-compliant mode in DHTMLX Gantt to meet accessibility standards.
 ---
@@ -100,23 +100,25 @@ DHTMLX Gantt includes built-in touch support — drag-and-drop, pinch-to-zoom on
 
 ## Content Security Policy (CSP) mode
 
-Some deployment environments enforce a strict Content Security Policy that disallows `eval()` and `new Function()`. Gantt ships a CSP-compliant rendering mode that replaces dynamic code generation with pre-compiled alternatives.
+<Note>
+  `gantt.config.csp` is **deprecated for date formatting** as of version 10. Date parsing and formatting are now always CSP-safe and no longer depend on this option. The value is still read as a secure-environment hint by the lightbox editor internally.
+</Note>
+
+Some deployment environments enforce a strict Content Security Policy that disallows `eval()` and `new Function()`. As of version 10 all date formatting is pre-compiled and CSP-safe by default. The `csp` config property remains available for legacy compatibility.
 
 ```js
-// "auto" (default) — use CSP-safe mode only when a strict CSP is detected
+// "auto" (default) — legacy hint; date formatting is always CSP-safe in v10
 gantt.config.csp = "auto";
 
-// true — always use CSP-safe date formatting (recommended for strict CSP environments)
+// true — explicitly enables the secure-environment hint for the lightbox editor
 gantt.config.csp = true;
 
-// false — allow dynamic code paths (not recommended under strict CSP)
+// false — opt out of the secure-environment hint (not recommended)
 gantt.config.csp = false;
 ```
 
-The `csp` option controls whether the internal date-formatting methods use `new Function()` (fast but blocked by `unsafe-eval` CSP directives) or a pre-compiled equivalent. The `"auto"` default detects the environment at runtime and switches automatically, which covers most cases without any manual configuration.
-
 <Warning>
-  If your CSP explicitly denies `unsafe-eval` and you see console errors about blocked `eval` calls, set `gantt.config.csp = true` **before** calling `gantt.init()`. Changing it after initialization has no effect on already-compiled formatting functions.
+  If you are migrating from an older Gantt version and relied on `gantt.config.csp = true` to prevent `eval` errors, you can leave the setting in place — it remains harmless. New projects on version 10 do not need to set it at all.
 </Warning>
 
 ## Accessibility configuration reference
@@ -130,7 +132,7 @@ The `csp` option controls whether the internal date-formatting methods use `new 
 </ResponseField>
 
 <ResponseField name="gantt.config.csp" type="boolean | 'auto'" default='"auto"'>
-  Controls Content Security Policy compatibility. `"auto"` detects strict CSP at runtime. `true` always uses pre-compiled date formatting. `false` uses dynamic `new Function()` calls (not safe under strict CSP).
+  **Deprecated for date formatting.** Date parsing and formatting are always CSP-safe in version 10 and no longer depend on this option. The value is still read as a secure-environment hint by the lightbox editor. Retained for backward compatibility.
 </ResponseField>
 
 ## Full accessibility setup example
@@ -152,8 +154,8 @@ gantt.config.wai_aria_attributes = true;
 // 3. Cell-level keyboard navigation for data-entry workflows
 gantt.config.keyboard_navigation_cells = true;
 
-// 4. CSP-safe date formatting for strict CSP environments
-gantt.config.csp = true;
+// 4. Optional: set the CSP hint for the lightbox editor (deprecated for date formatting in v10)
+// gantt.config.csp = true;
 
 gantt.init("gantt_here");
 

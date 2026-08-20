@@ -1,7 +1,7 @@
 ---
-title: Gantt Chart Event System and Available Events
+title: DHTMLX Gantt Chart Event System and Available Events
 sidebarTitle: Events
-description: Use attachEvent, detachEvent, and callEvent to react to task, link, drag, UI, and data lifecycle events in DHTMLX Gantt chart.
+description: Use attachEvent, detachEvent, and callEvent to handle task, link, drag, UI, and data lifecycle events throughout the DHTMLX Gantt chart.
 ---
 
 DHTMLX Gantt ships with a rich event system that lets you hook into every stage of the chart lifecycle — from data loading and task creation through drag-and-drop and lightbox saves. You attach a handler function to a named event and receive arguments specific to that event; returning `false` from cancellable handlers aborts the operation.
@@ -108,12 +108,11 @@ These events fire during the creation, update, and deletion of tasks.
     ```
   </Accordion>
   <Accordion title="onBeforeTaskUpdate(id, new_task)">
-    Fires before a task is updated in the data store.
+    Fires before a task is updated in the data store. This event is informational — its return value does not cancel the update. Use it to read or log the task object before the change is committed.
 
     ```js
     gantt.attachEvent("onBeforeTaskUpdate", function(id, task) {
-      // Prevent reducing progress
-      return task.progress >= 0;
+      console.log("Task", id, "is about to be updated:", task.text);
     });
     ```
   </Accordion>
@@ -309,7 +308,7 @@ gantt.attachEvent("onAfterTaskDelete", function(id, task) {
 ```
 
 <Tip>
-  Handlers for `onBefore*` events (such as `onBeforeTaskDelete`, `onBeforeTaskUpdate`, `onBeforeTaskDrag`, and `onLightboxSave`) can return `false` to cancel the operation entirely. No change is made to the data store, no server request is sent, and the UI reverts to its previous state. Always return `true` explicitly when you want the operation to proceed.
+  Handlers for cancellable `onBefore*` events (such as `onBeforeTaskDelete`, `onBeforeTaskDrag`, and `onLightboxSave`) can return `false` to abort the operation entirely. No change is made to the data store, no server request is sent, and the UI reverts to its previous state. Always return `true` explicitly when you want the operation to proceed. Note that `onBeforeTaskUpdate` is informational and its return value does not cancel the update.
 </Tip>
 
 ## Listening to all events

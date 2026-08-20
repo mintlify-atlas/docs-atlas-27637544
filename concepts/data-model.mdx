@@ -1,7 +1,7 @@
 ---
 title: "DHTMLX Gantt Data Model: Tasks, Links & JSON Format"
 sidebarTitle: "Data Model"
-description: "Learn the JSON format gantt.parse() accepts, every ITask and ILink field, date parsing options, and a complete working example with projects and milestones."
+description: "Learn the JSON format gantt.parse() accepts, every ITask and ILink field, date parsing, and a complete working example with projects and milestones."
 ---
 
 DHTMLX Gantt is driven by plain JavaScript objects. All task and dependency data lives in two flat arrays — `data` (tasks) and `links` (dependencies) — which you hand to `gantt.parse()`. Understanding the shape of those objects is the foundation of everything else you build on top of the library.
@@ -56,7 +56,7 @@ Each element of the `data` array is a task object. The fields recognised by Gant
 </ParamField>
 
 <ParamField body="open" type="boolean">
-  Whether the task's children are expanded in the tree. Defaults to `false` (collapsed). Set to `true` on project-type tasks to show child tasks on load.
+  Whether the task's children are expanded in the tree. Defaults to `false` (collapsed). Set to `true` on project-type tasks to show child tasks on load. Gantt reads this value at parse time and stores the resolved state in the computed `$open` field.
 </ParamField>
 
 <ParamField body="constraint_type" type="ConstraintTypes">
@@ -84,6 +84,9 @@ Gantt adds several computed fields to every task object at parse time. These are
 | `$open` | `boolean` | Resolved open/collapsed state |
 | `$rendered_type` | `TaskType` | Effective rendered type after `auto_types` resolution |
 | `$rendered_parent` | `TaskID` | Effective parent id used for rendering |
+| `$no_start` | `boolean` | `true` when the task has no explicit start date |
+| `$no_end` | `boolean` | `true` when the task has no explicit end date |
+| `$keep_constraints` | `boolean` | Internal flag used by auto-scheduling to preserve constraints |
 
 <Warning>
   Never write to `$`-prefixed fields directly. They are recomputed on every render cycle and your changes will be silently overwritten.

@@ -1,7 +1,7 @@
 ---
-title: "Customizing Gantt with Templates and CSS Classes"
+title: "Customize DHTMLX Gantt with Templates and CSS Classes"
 sidebarTitle: "Templates"
-description: "Override gantt.templates functions to control task text, bar colors, grid rows, scale cells, and tooltip content in DHTMLX Gantt."
+description: "Override gantt.templates functions to control task text, CSS classes on bars, scale and grid rows, and tooltip content in DHTMLX Gantt."
 ---
 
 DHTMLX Gantt exposes every rendered element through a single object, `gantt.templates`, which holds named functions you can replace at any time before or after `gantt.init()`. Each template function receives contextual arguments (dates, task objects, link objects) and returns either a CSS class name string or an HTML string. Because the library calls your function when it redraws each element, a single assignment replaces the default output across the entire chart.

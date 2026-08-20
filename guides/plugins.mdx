@@ -1,5 +1,5 @@
 ---
-title: "Activating and Configuring DHTMLX Gantt Plugins"
+title: "Activating and Using DHTMLX Gantt Optional Plugins"
 sidebarTitle: "Plugins"
 description: "Activate and configure DHTMLX Gantt optional plugins: tooltip, quick_info, fullscreen, keyboard_navigation, drag_timeline, click_drag, and export_api."
 ---
@@ -70,7 +70,16 @@ Shows a compact popup panel with task details when a task bar is clicked or tapp
 gantt.plugins({ quick_info: true });
 ```
 
-The popup content uses the same `tooltip_text` template as the `tooltip` plugin.
+The popup content is controlled by three dedicated templates: `quick_info_title`, `quick_info_content`, and `quick_info_date`. These are separate from the `tooltip_text` template used by the `tooltip` plugin.
+
+```js
+gantt.templates.quick_info_title = function (start, end, task) {
+  return task.text.substr(0, 50);
+};
+gantt.templates.quick_info_content = function (start, end, task) {
+  return task.details || task.text;
+};
+```
 
 ---
 
