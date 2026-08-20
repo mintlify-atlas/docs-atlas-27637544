@@ -1,0 +1,142 @@
+{
+  "projectType": "sdk-library",
+  "projectName": "DHTMLX Gantt",
+  "projectDescription": "An open-source JavaScript Gantt chart library for project scheduling, timelines, task dependencies, and drag-and-drop editing.",
+  "theme": "luma",
+  "primaryColor": "#2bcd69",
+  "lightColor": "#040404",
+  "darkColor": "#2294f3",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Getting Started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "installation",
+              "building-from-source"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "concepts/data-model",
+              "concepts/task-types",
+              "concepts/dependencies",
+              "concepts/timescale-and-zoom"
+            ]
+          },
+          {
+            "group": "Configuration",
+            "pages": [
+              "configuration/grid-columns",
+              "configuration/scales",
+              "configuration/layout",
+              "configuration/skins-and-themes",
+              "configuration/localization"
+            ]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "guides/templates-and-customization",
+              "guides/lightbox-editor",
+              "guides/plugins",
+              "guides/data-loading-and-saving",
+              "guides/backend-integration",
+              "guides/framework-integration",
+              "guides/export"
+            ]
+          },
+          {
+            "group": "Advanced",
+            "pages": [
+              "advanced/multiple-instances",
+              "advanced/events",
+              "advanced/smart-rendering",
+              "advanced/accessibility"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "API",
+            "pages": [
+              "api/overview",
+              "api/config",
+              "api/methods",
+              "api/events",
+              "api/templates"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Task grid with configurable columns, tree hierarchy, and inline cell editing",
+    "Projects / summary tasks and milestones with type-aware rendering",
+    "Zoomable single or dual time scale with configurable unit (minute to year)",
+    "Four dependency link types (FS, SS, FF, SF) with lag and drag-to-create",
+    "Drag-and-drop scheduling — move and resize task bars",
+    "Progress indicators editable via lightbox or inline",
+    "Lightbox task editor with configurable sections and custom controls",
+    "Smart rendering for large datasets (only visible rows/columns drawn)",
+    "Multiple independent chart instances via Gantt factory",
+    "Template system to override any rendered element",
+    "Plugins: tooltips, quick info, fullscreen, keyboard navigation, drag-timeline, click-drag",
+    "Data loading/saving via JSON/XML parsing and REST dataProcessor",
+    "Export to PDF, PNG, Excel, iCal, and MS Project via DHTMLX export service",
+    "Skins: Material, Terrace, Meadow, Broadway, Skyblue, Dark, and more",
+    "32 locales, WAI-ARIA accessibility, touch support, CSP-compliant mode",
+    "100+ event system covering interactions and lifecycle hooks",
+    "Full TypeScript definitions bundled",
+    "Framework integrations: React, Angular, Vue, Svelte"
+  ],
+  "publicApiSurface": [
+    "gantt.init(container, from?, to?)",
+    "gantt.parse(data, type?)",
+    "gantt.load(url, type?, callback?)",
+    "gantt.serialize(type?)",
+    "gantt.config",
+    "gantt.templates",
+    "gantt.plugins(config)",
+    "gantt.attachEvent(name, handler)",
+    "gantt.detachEvent(id)",
+    "gantt.callEvent(name, params)",
+    "gantt.getTask(id)",
+    "gantt.addTask(item, parent?, index?)",
+    "gantt.updateTask(id, item?)",
+    "gantt.deleteTask(id)",
+    "gantt.isTaskExists(id)",
+    "gantt.getTaskByTime(from?, to?)",
+    "gantt.getChildren(id)",
+    "gantt.getParent(id)",
+    "gantt.hasChild(id)",
+    "gantt.eachTask(callback, parent?, master?)",
+    "gantt.getLink(id)",
+    "gantt.addLink(link)",
+    "gantt.updateLink(id)",
+    "gantt.deleteLink(id)",
+    "gantt.isCircularLink(link)",
+    "gantt.createDataProcessor(config)",
+    "Gantt.getGanttInstance(settings?)",
+    "gantt.ext.zoom.init(config?)",
+    "gantt.ext.zoom.zoomToFit(options?)",
+    "gantt.ext.zoom.resetZoom()",
+    "gantt.ext.export_api.exportToPDF(config?)",
+    "gantt.ext.export_api.exportToPNG(config?)",
+    "gantt.ext.export_api.exportToExcel(config?)",
+    "gantt.ext.export_api.exportToICal(config?)",
+    "gantt.ext.export_api.exportToMSProject(config?)",
+    "gantt.locale",
+    "gantt.date.str_to_date(format)",
+    "gantt.date.date_to_str(format)"
+  ]
+}

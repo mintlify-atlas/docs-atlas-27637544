@@ -1,0 +1,203 @@
+---
+title: "Installing DHTMLX Gantt: npm, CDN, and Bundler Setup"
+sidebarTitle: "Installation"
+description: "Install dhtmlx-gantt via npm, yarn, or pnpm; import it through a module bundler; load it from a CDN or local script tag; and configure TypeScript types."
+---
+
+DHTMLX Gantt is distributed as the `dhtmlx-gantt` npm package (version 10.0.1). The package ships pre-built files in the `codebase/` directory alongside the library source, so it works equally well with modern module bundlers, plain `<script>` tags, and TypeScript projects. Choose the approach that fits your stack.
+
+## Package Manager Installation
+
+Install the package with the package manager you are already using in your project.
+
+<CodeGroup>
+```bash npm
+npm install dhtmlx-gantt
+```
+
+```bash yarn
+yarn add dhtmlx-gantt
+```
+
+```bash pnpm
+pnpm add dhtmlx-gantt
+```
+</CodeGroup>
+
+The published package includes the following files inside the `codebase/` subdirectory:
+
+| File | Description |
+|:-----|:------------|
+| `codebase/dhtmlxgantt.js` | UMD bundle (CommonJS + global `gantt`) |
+| `codebase/dhtmlxgantt.es.js` | ES module build |
+| `codebase/dhtmlxgantt.css` | Default stylesheet |
+| `codebase/dhtmlxgantt.d.ts` | TypeScript type definitions |
+
+## Module Bundler
+
+<Tabs>
+  <Tab title="Vite / webpack / Rollup">
+    Import both the JavaScript module and the CSS file. The named export `gantt` is the default chart instance; `Gantt` is the factory for creating additional instances.
+
+    ```js
+    import { gantt } from "dhtmlx-gantt";
+    import "dhtmlx-gantt/codebase/dhtmlxgantt.css";
+
+    gantt.config.date_format = "%Y-%m-%d";
+    gantt.init("gantt_here");
+    ```
+
+    To create multiple independent chart instances on the same page, use the `Gantt` factory:
+
+    ```js
+    import { Gantt } from "dhtmlx-gantt";
+    import "dhtmlx-gantt/codebase/dhtmlxgantt.css";
+
+    const chartA = Gantt.getGanttInstance();
+    const chartB = Gantt.getGanttInstance();
+
+    chartA.init("gantt_a");
+    chartB.init("gantt_b");
+    ```
+
+    <Tip>
+      Add the CSS import once at your application's entry point (e.g. `main.js` or `main.ts`) so it is bundled automatically and applied globally.
+    </Tip>
+  </Tab>
+
+  <Tab title="ES Module (browser-native)">
+    When targeting modern browsers with native ES module support, you can point the import directly at the ES module build:
+
+    ```html
+    <script type="module">
+      import { gantt } from "/node_modules/dhtmlx-gantt/codebase/dhtmlxgantt.es.js";
+
+      gantt.config.date_format = "%Y-%m-%d";
+      gantt.init("gantt_here");
+    </script>
+    <link rel="stylesheet" href="/node_modules/dhtmlx-gantt/codebase/dhtmlxgantt.css">
+    ```
+
+    <Note>
+      Native ES module imports require a running HTTP server — they do not work when opening HTML files directly from the filesystem with a `file://` URL.
+    </Note>
+  </Tab>
+</Tabs>
+
+## Plain Script Tag / CDN
+
+<Tabs>
+  <Tab title="Local codebase/ files">
+    If you are not using a bundler, copy the pre-built files from `node_modules/dhtmlx-gantt/codebase/` to your project's public directory and reference them with `<script>` and `<link>` tags:
+
+    ```html
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <script src="dhtmlxgantt.js"></script>
+      <link rel="stylesheet" href="dhtmlxgantt.css">
+      <style>
+        html, body { margin: 0; padding: 0; height: 100%; }
+        #gantt_here { width: 100%; height: 100vh; }
+      </style>
+    </head>
+    <body>
+      <div id="gantt_here"></div>
+
+      <script>
+        gantt.config.date_format = "%Y-%m-%d";
+        gantt.init("gantt_here");
+        gantt.parse({ data: [], links: [] });
+      </script>
+    </body>
+    </html>
+    ```
+
+    The UMD bundle registers a global `gantt` object on `window`, so no import statement is needed.
+  </Tab>
+
+  <Tab title="CDN (unpkg / jsDelivr)">
+    Load the library directly from a CDN without any local installation:
+
+    ```html
+    <!-- unpkg -->
+    <script src="https://unpkg.com/dhtmlx-gantt@10.0.1/codebase/dhtmlxgantt.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/dhtmlx-gantt@10.0.1/codebase/dhtmlxgantt.css">
+    ```
+
+    ```html
+    <!-- jsDelivr -->
+    <script src="https://cdn.jsdelivr.net/npm/dhtmlx-gantt@10.0.1/codebase/dhtmlxgantt.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/dhtmlx-gantt@10.0.1/codebase/dhtmlxgantt.css">
+    ```
+
+    <Warning>
+      Pin the version number in CDN URLs (`@10.0.1`) for production applications. Unpinned CDN links (`@latest`) may break your app when a new major version is published.
+    </Warning>
+  </Tab>
+</Tabs>
+
+## TypeScript Setup
+
+DHTMLX Gantt ships with bundled TypeScript definitions at `codebase/dhtmlxgantt.d.ts`. When you install the package, TypeScript picks up the types automatically via the `types` field in `package.json` — no separate `@types/` package is required.
+
+```ts
+import { gantt, Gantt } from "dhtmlx-gantt";
+import type { IGanttFactory, IGanttInitializationConfig } from "dhtmlx-gantt";
+import "dhtmlx-gantt/codebase/dhtmlxgantt.css";
+
+// gantt is typed as the default chart instance
+gantt.config.date_format = "%Y-%m-%d";
+gantt.init("gantt_here");
+```
+
+The `IGanttInitializationConfig` interface describes the optional settings object accepted by `Gantt.getGanttInstance()`:
+
+```ts
+import { Gantt } from "dhtmlx-gantt";
+import type { IGanttInitializationConfig } from "dhtmlx-gantt";
+
+const settings: IGanttInitializationConfig = {
+    container: "gantt_here",
+    config: {
+        date_format: "%Y-%m-%d"
+    }
+};
+
+const chart = Gantt.getGanttInstance(settings);
+chart.init("gantt_here");
+```
+
+<Note>
+  The bundled `.d.ts` file covers the full DHTMLX Gantt product API. Some interfaces and methods in the type definitions correspond to PRO-only features that are not available in the Community Edition.
+</Note>
+
+## Framework Integration
+
+DHTMLX Gantt integrates with all major front-end frameworks through standard wrapper patterns. The library is framework-agnostic — it has no peer dependencies on any framework.
+
+<CardGroup cols={2}>
+  <Card title="React" icon="react" href="https://docs.dhtmlx.com/gantt/integrations/react/js-gantt-react/">
+    React integration guide and patterns.
+  </Card>
+  <Card title="Angular" icon="a" href="https://docs.dhtmlx.com/gantt/integrations/angular/js-gantt-angular/">
+    Angular integration guide and patterns.
+  </Card>
+  <Card title="Vue.js" icon="vuejs" href="https://docs.dhtmlx.com/gantt/integrations/vue/js-gantt-vue/">
+    Vue.js integration guide and patterns.
+  </Card>
+  <Card title="Svelte" icon="s" href="https://docs.dhtmlx.com/gantt/integrations/svelte/howtostart-svelte/">
+    Svelte integration guide and patterns.
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Render your first Gantt chart with tasks and links.
+  </Card>
+  <Card title="Build from Source" icon="hammer" href="/building-from-source">
+    Clone the repository and rebuild the library from its TypeScript source.
+  </Card>
+</CardGroup>

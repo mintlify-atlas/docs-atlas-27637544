@@ -1,0 +1,138 @@
+---
+title: "DHTMLX Gantt Public API Surface Overview"
+sidebarTitle: "Overview"
+description: "Tour the full public API of DHTMLX Gantt: the gantt singleton, the Gantt factory, config, templates, events, ext, locale, and date namespaces."
+---
+
+DHTMLX Gantt exposes nearly all of its functionality through a single global object — the `gantt` singleton — and a companion `Gantt` factory for creating multiple independent chart instances. Every configuration property, template function, event handler, and extension lives on one of the well-defined sub-namespaces described below.
+
+## Installation and import
+
+Install the npm package and import the named exports from `dhtmlx-gantt`:
+
+```bash
+npm install dhtmlx-gantt
+```
+
+```js
+import { gantt, Gantt } from "dhtmlx-gantt";
+import "dhtmlx-gantt/codebase/dhtmlxgantt.css";
+```
+
+The same objects are available as globals when you load the bundled script tag directly:
+
+```html
+<script src="codebase/dhtmlxgantt.js"></script>
+<link rel="stylesheet" href="codebase/dhtmlxgantt.css" />
+```
+
+## The `gantt` singleton
+
+`gantt` is the default chart instance created automatically when the module is loaded. For most single-chart applications it is the only object you need.
+
+```js
+import { gantt } from "dhtmlx-gantt";
+
+gantt.config.date_format = "%Y-%m-%d";
+gantt.init("gantt_here");
+
+gantt.parse({
+  data: [
+    { id: 1, text: "Website redesign", type: "project", open: true },
+    { id: 2, text: "Research", start_date: "2026-06-01", duration: 4, parent: 1 }
+  ],
+  links: []
+});
+```
+
+## The `Gantt` factory
+
+`Gantt` is a factory object used to create additional, fully independent chart instances. Each instance has its own `config`, `templates`, event queue, and data stores.
+
+```js
+import { Gantt } from "dhtmlx-gantt";
+
+const chartA = Gantt.getGanttInstance();
+const chartB = Gantt.getGanttInstance();
+
+chartA.init("container_a");
+chartB.init("container_b");
+```
+
+The default `gantt` export is itself an instance created by `Gantt.getGanttInstance()`, so existing single-chart code works unchanged.
+
+<Note>
+  `Gantt.plugin(fn)` registers a plugin function that will be applied to every instance created afterwards by `getGanttInstance()`.
+</Note>
+
+## Main namespaces
+
+<CardGroup cols={2}>
+  <Card title="gantt.config" icon="gear" href="/api/config">
+    The main configuration object. Controls date format, columns, scales, drag-and-drop behavior, task types, layout, and dozens of other properties. Mutate before `gantt.init()` for initial setup, or at runtime followed by `gantt.render()`.
+  </Card>
+  <Card title="gantt.templates" icon="paintbrush" href="/api/templates">
+    An object of functions that return the rendered output for every visual element — task bar text, CSS classes, tooltips, grid headers, scale cells, and more. Override any function to customize rendering.
+  </Card>
+  <Card title="gantt events" icon="bolt" href="/api/events">
+    Over 100 lifecycle events covering task CRUD, drag-and-drop, link operations, data loading, UI interactions, and more. Attach handlers with `gantt.attachEvent()` and detach with `gantt.detachEvent()`.
+  </Card>
+  <Card title="gantt methods" icon="code" href="/api/methods">
+    All public methods: initialization, data loading and serialization, task and link CRUD, tree navigation, zoom control, and export functions via `gantt.ext.export_api`.
+  </Card>
+</CardGroup>
+
+## `gantt.ext` — extensions
+
+Optional extensions are activated with `gantt.plugins({})` before `gantt.init()` and then accessible on the `gantt.ext` namespace.
+
+```js
+gantt.plugins({
+  tooltip: true,
+  export_api: true,
+});
+
+gantt.init("gantt_here");
+
+// zoom extension (always present)
+gantt.ext.zoom.init({ trigger: "wheel", levels: [...] });
+
+// export extension (requires export_api plugin)
+gantt.ext.export_api.exportToPDF({ name: "project.pdf" });
+```
+
+Available extensions:
+
+| Extension key | `gantt.ext` property | Purpose |
+|---|---|---|
+| `tooltip` | `gantt.ext.tooltip` | Hover tooltips on task bars |
+| `quick_info` | `gantt.ext.quickInfo` | Touch-friendly pop-up task info panel |
+| `fullscreen` | `gantt.ext.fullscreen` | Fullscreen toggle |
+| `keyboard_navigation` | `gantt.ext.keyboardNavigation` | Arrow-key navigation |
+| `drag_timeline` | (config only) | Drag to pan the timeline |
+| `click_drag` | `gantt.ext.clickDrag` | Draw new tasks by dragging on empty timeline |
+| `export_api` | `gantt.ext.export_api` | PDF, PNG, Excel, iCal, MS Project export |
+| `zoom` | `gantt.ext.zoom` | Interactive zoom levels (always present) |
+
+## `gantt.locale`
+
+The locale object contains date labels, button labels, and UI strings. Swap it to change the chart language at runtime:
+
+```js
+import ru from "dhtmlx-gantt/locale/locale_ru";
+gantt.i18n.setLocale(ru);
+```
+
+The structure is typed as `IGanttLocale` with `date` (`IGanttLocaleDate`) and `labels` (`IGanttLocaleLabels`) sub-objects.
+
+## `gantt.date`
+
+A utility namespace with date arithmetic helpers used internally and available to application code:
+
+```js
+gantt.date.add(date, count, unit); // add N units to a Date
+gantt.date.date_to_str(format);    // returns a format→string function
+gantt.date.str_to_date(format);    // returns a string→Date function
+gantt.date.day_start(date);        // beginning of the day
+gantt.date.month_start(date);      // beginning of the month
+```

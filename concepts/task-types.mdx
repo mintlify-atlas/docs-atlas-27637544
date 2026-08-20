@@ -1,0 +1,174 @@
+---
+title: "DHTMLX Gantt Task Types: task, project, milestone"
+sidebarTitle: "Task Types"
+description: "Understand the three built-in Gantt task types — regular task, project summary, and milestone — and how auto_types converts parent tasks automatically."
+---
+
+DHTMLX Gantt ships with three distinct task rendering modes, each designed for a different scheduling concept. A regular task represents a concrete piece of work with a defined duration. A project task is a summary container that collapses and expands to show its children. A milestone marks a zero-duration point-in-time event such as a deliverable or approval gate. You choose the type by setting the `type` field on each task object.
+
+## Type overview
+
+The `type` field accepts one of three string values, defined by the `TaskType` union:
+
+```ts
+type TaskType = "task" | "project" | "milestone";
+```
+
+These values are also accessible through the `gantt.config.types` map, which lets you reference them symbolically instead of hardcoding strings:
+
+```js
+gantt.config.types.task;       // "task"
+gantt.config.types.project;    // "project"
+gantt.config.types.milestone;  // "milestone"
+```
+
+<Tabs>
+  <Tab title="task">
+    The default type. Rendered as a horizontal bar whose width corresponds to the task's `duration`. Shows a progress overlay when `gantt.config.show_progress` is `true`. Supports all drag-and-drop interactions (move, resize, progress drag).
+
+    ```js
+    gantt.parse({
+      data: [
+        {
+          id: 2,
+          text: "Research & Discovery",
+          start_date: "2026-06-01",
+          duration: 5,
+          progress: 1.0,
+          parent: 1
+          // type: "task" is the default — you can omit it
+        }
+      ]
+    });
+    ```
+  </Tab>
+  <Tab title="project">
+    A summary (parent) container. Renders as a bracket-style bar that spans from the earliest start date to the latest end date among all direct and nested children. The bar width is calculated automatically from children — you normally do not set `start_date` / `duration` on a project task manually.
+
+    ```js
+    gantt.parse({
+      data: [
+        {
+          id: 1,
+          text: "Website Redesign",
+          type: "project",
+          open: true,      // expand children on load
+          progress: 0.35
+        },
+        {
+          id: 2,
+          text: "Research",
+          start_date: "2026-06-01",
+          duration: 5,
+          parent: 1
+        }
+      ]
+    });
+    ```
+
+    The project bar is not draggable by default. Set `gantt.config.drag_project = true` to allow the entire subtree to be moved together when dragging the project bar.
+  </Tab>
+  <Tab title="milestone">
+    A zero-duration event rendered as a rotated diamond. Milestones typically have only a `start_date` (no `duration` or `end_date`). They are commonly used to mark handoffs, approvals, or deadlines.
+
+    ```js
+    gantt.parse({
+      data: [
+        {
+          id: 5,
+          text: "Design Sign-off",
+          start_date: "2026-06-23",
+          type: "milestone",
+          parent: 1
+        }
+      ]
+    });
+    ```
+
+    Use the `rightside_text` template to display the milestone label outside the diamond, since the diamond shape provides no interior space for text:
+
+    ```js
+    gantt.templates.rightside_text = function(start, end, task) {
+      if (task.type === gantt.config.types.milestone) {
+        return task.text;
+      }
+      return "";
+    };
+    ```
+  </Tab>
+</Tabs>
+
+## Rendering differences
+
+| Feature | `task` | `project` | `milestone` |
+|---|---|---|---|
+| Bar shape | Horizontal bar | Bracket (parent span) | Rotated diamond |
+| `start_date` / `duration` | Required | Derived from children | `start_date` only |
+| Progress overlay | Yes | Yes | No |
+| Drag-to-move | Yes | Optional (`drag_project`) | Yes |
+| Drag-to-resize | Yes | No | No |
+| Collapse/expand children | n/a | Yes | n/a |
+
+## Setting and changing task type
+
+Set `type` in the initial data, or change it programmatically at runtime:
+
+```js
+// Change a task to a milestone at runtime
+const task = gantt.getTask(5);
+task.type = gantt.config.types.milestone;
+gantt.updateTask(task.id);
+```
+
+You can also let users change the type themselves through the lightbox editor. The default lightbox for project and milestone tasks already includes a type-select control. To add it to regular tasks too, configure the `sections` array:
+
+```js
+gantt.config.lightbox.sections = [
+  { name: "description", height: 70, map_to: "text", type: "textarea", focus: true },
+  { name: "type",        type: "typeselect",          map_to: "type"  },
+  { name: "time",        type: "duration",             map_to: "auto"  }
+];
+```
+
+## Auto-converting parent tasks with `auto_types`
+
+When `gantt.config.auto_types` is `true`, Gantt automatically promotes any regular task that gains children to the `"project"` type, and demotes it back to `"task"` when its last child is removed.
+
+```js
+gantt.config.auto_types = true; // default: false
+
+gantt.init("gantt_here");
+gantt.parse({
+  data: [
+    // This task has a child, so it will automatically become type "project"
+    { id: 1, text: "Phase 1", start_date: "2026-06-01", duration: 10 },
+    { id: 2, text: "Design",  start_date: "2026-06-01", duration: 5, parent: 1 }
+  ]
+});
+```
+
+The conversion is triggered by the `onParse`, `onAfterTaskAdd`, `onAfterTaskUpdate`, and `onAfterTaskDelete` events, so it responds to both initial data loading and runtime changes.
+
+<Tip>
+  `auto_types` is useful when your data source does not differentiate between container and leaf tasks. Enable it once and let Gantt handle the type bookkeeping for you.
+</Tip>
+
+## Custom task types (PRO edition)
+
+The `gantt.config.types` map is extensible. You can register additional type names, supply a custom lightbox configuration for them, and use `gantt.config.type_renderers` to control how bars look:
+
+```js
+// Register a custom type
+gantt.config.types["risk"] = "risk";
+gantt.locale.labels["type_risk"] = "Risk Item";
+
+// Give it a dedicated lightbox layout
+gantt.config.lightbox["risk_sections"] = [
+  { name: "description", height: 70, map_to: "text", type: "textarea", focus: true },
+  { name: "type",        type: "typeselect",          map_to: "type"  }
+];
+```
+
+<Note>
+  There is a fourth built-in type called `"placeholder"` (`gantt.config.types.placeholder`). This is an internal type used by the new-task placeholder row feature (`gantt.config.placeholder_task`). Do **not** assign it to your own tasks — it is not intended for direct user data and its rendering behaviour is not part of the public API.
+</Note>

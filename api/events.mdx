@@ -1,0 +1,542 @@
+---
+title: "DHTMLX Gantt Events — Handlers, Signatures, and Lifecycle"
+sidebarTitle: "Events"
+description: "Complete guide to gantt.attachEvent, detachEvent, and callEvent with all major events grouped by category, parameter types, and cancellation behavior."
+---
+
+DHTMLX Gantt uses a named-event system with over 100 lifecycle hooks. Every event is identified by a string name. Handlers are registered with `gantt.attachEvent()` and removed with `gantt.detachEvent()`. You can also fire any event programmatically with `gantt.callEvent()`.
+
+Event handler signatures and documentation below are sourced from `src/core/common/gantt_types.ts`.
+
+---
+
+## Attaching and detaching handlers
+
+### `gantt.attachEvent(name, handler, options?)`
+
+Registers a handler for the named event. Returns a handler ID that can be passed to `gantt.detachEvent()`.
+
+| Parameter | Type | Description |
+|---|---|---|
+| `name` | `string` | Event name (e.g. `"onAfterTaskAdd"`) |
+| `handler` | `Function` | Handler function |
+| `options` | `{ once?: boolean }` (optional) | Pass `{ once: true }` to auto-detach after the first call |
+
+**Returns:** `string` — unique handler ID.
+
+```js
+const handlerId = gantt.attachEvent("onAfterTaskAdd", function(id, task) {
+  console.log("Task added:", id, task.text);
+});
+```
+
+---
+
+### `gantt.detachEvent(id)`
+
+Removes a previously attached handler.
+
+| Parameter | Type | Description |
+|---|---|---|
+| `id` | `string` | The handler ID returned by `attachEvent` |
+
+```js
+gantt.detachEvent(handlerId);
+```
+
+---
+
+### `gantt.callEvent(name, params)`
+
+Fires an event manually. All attached handlers are called with `params` as their arguments. Useful for testing or triggering custom events.
+
+| Parameter | Type | Description |
+|---|---|---|
+| `name` | `string` | Event name |
+| `params` | `any[]` | Array of arguments passed to each handler |
+
+**Returns:** `boolean` — `false` if any handler returned `false` (cancellable events), otherwise `true`.
+
+```js
+gantt.callEvent("onAfterTaskAdd", [taskId, taskObject]);
+```
+
+<Note>
+  For **cancellable events** (those whose handlers return a `boolean`), returning `false` from your handler prevents the default action (e.g. prevents a task from being added or deleted). Always return `true` to allow the action to proceed.
+</Note>
+
+---
+
+## Task events
+
+These events fire around task CRUD operations and selection.
+
+<Accordion title="onBeforeTaskAdd">
+  **Fires:** Before a task is added by `gantt.addTask()`.
+
+  **Signature:** `(id: TaskID, task: ITask) => boolean`
+
+  Return `false` to cancel the add operation.
+
+  ```js
+  gantt.attachEvent("onBeforeTaskAdd", function(id, task) {
+    if (!task.text) return false; // prevent tasks with empty text
+    return true;
+  });
+  ```
+</Accordion>
+
+<Accordion title="onAfterTaskAdd">
+  **Fires:** After a task has been successfully added.
+
+  **Signature:** `(id: TaskID, task: ITask) => void`
+
+  ```js
+  gantt.attachEvent("onAfterTaskAdd", function(id, task) {
+    fetch("/api/tasks", {
+      method: "POST",
+      body: JSON.stringify(task)
+    });
+  });
+  ```
+</Accordion>
+
+<Accordion title="onBeforeTaskUpdate">
+  **Fires:** Before `gantt.updateTask()` writes changes.
+
+  **Signature:** `(id: TaskID, new_task: ITask) => void`
+</Accordion>
+
+<Accordion title="onAfterTaskUpdate">
+  **Fires:** After `gantt.updateTask()` completes.
+
+  **Signature:** `(id: TaskID, task: ITask) => void`
+
+  ```js
+  gantt.attachEvent("onAfterTaskUpdate", function(id, task) {
+    fetch(`/api/tasks/${id}`, { method: "PUT", body: JSON.stringify(task) });
+  });
+  ```
+</Accordion>
+
+<Accordion title="onBeforeTaskDelete">
+  **Fires:** Before a task is deleted.
+
+  **Signature:** `(id: TaskID, task: ITask) => boolean`
+
+  Return `false` to cancel deletion.
+
+  ```js
+  gantt.attachEvent("onBeforeTaskDelete", function(id, task) {
+    return confirm("Delete task: " + task.text + "?");
+  });
+  ```
+</Accordion>
+
+<Accordion title="onAfterTaskDelete">
+  **Fires:** After a task has been deleted.
+
+  **Signature:** `(id: TaskID, task: ITask) => void`
+</Accordion>
+
+<Accordion title="onBeforeTaskDisplay">
+  **Fires:** After tasks are loaded but before each is rendered. Return `false` to hide the task from the chart entirely.
+
+  **Signature:** `(id: TaskID, task: ITask) => boolean`
+
+  ```js
+  gantt.attachEvent("onBeforeTaskDisplay", function(id, task) {
+    return task.type !== "placeholder"; // hide placeholder tasks
+  });
+  ```
+</Accordion>
+
+<Accordion title="onTaskSelected">
+  **Fires:** When the user clicks a task row, selecting it.
+
+  **Signature:** `(id: TaskID) => void`
+
+  ```js
+  gantt.attachEvent("onTaskSelected", function(id) {
+    showTaskPanel(gantt.getTask(id));
+  });
+  ```
+</Accordion>
+
+<Accordion title="onBeforeTaskSelected">
+  **Fires:** Before a task is selected. Return `false` to prevent selection.
+
+  **Signature:** `(id: TaskID) => boolean`
+</Accordion>
+
+<Accordion title="onTaskClick">
+  **Fires:** When the user left-clicks a task bar.
+
+  **Signature:** `(id: TaskID, e: Event) => boolean`
+
+  Return `false` to prevent default click behavior.
+</Accordion>
+
+<Accordion title="onTaskDblClick">
+  **Fires:** When the user double-clicks a task bar.
+
+  **Signature:** `(id: TaskID, e: Event) => boolean`
+
+  Return `false` to prevent the lightbox from opening.
+</Accordion>
+
+<Accordion title="onTaskCreated">
+  **Fires:** When a new task object is created (before it is added or shown in the lightbox).
+
+  **Signature:** `(task: ITask) => boolean`
+
+  Return `false` to cancel creation.
+</Accordion>
+
+---
+
+## Link events
+
+<Accordion title="onBeforeLinkAdd">
+  **Fires:** Before a new dependency link is added.
+
+  **Signature:** `(id: LinkID, link: ILink) => boolean`
+
+  Return `false` to prevent the link from being added.
+
+  ```js
+  gantt.attachEvent("onBeforeLinkAdd", function(id, link) {
+    // Block finish-to-finish links
+    return link.type !== gantt.config.links.finish_to_finish;
+  });
+  ```
+</Accordion>
+
+<Accordion title="onAfterLinkAdd">
+  **Fires:** After a new link has been added.
+
+  **Signature:** `(id: LinkID, link: ILink) => void`
+
+  ```js
+  gantt.attachEvent("onAfterLinkAdd", function(id, link) {
+    fetch("/api/links", { method: "POST", body: JSON.stringify(link) });
+  });
+  ```
+</Accordion>
+
+<Accordion title="onBeforeLinkDelete">
+  **Fires:** Before a link is deleted. Return `false` to cancel.
+
+  **Signature:** `(id: LinkID, link: ILink) => boolean`
+</Accordion>
+
+<Accordion title="onAfterLinkDelete">
+  **Fires:** After a link has been deleted.
+
+  **Signature:** `(id: LinkID, link: ILink) => void`
+</Accordion>
+
+<Accordion title="onAfterLinkUpdate">
+  **Fires:** After a link is updated.
+
+  **Signature:** `(id: LinkID, link: ILink) => void`
+</Accordion>
+
+<Accordion title="onBeforeLinkUpdate">
+  **Fires:** Before a link is updated. Return `false` to cancel.
+
+  **Signature:** `(id: LinkID, new_link: ILink) => boolean`
+</Accordion>
+
+<Accordion title="onLinkClick">
+  **Fires:** When the user clicks a dependency link.
+
+  **Signature:** `(id: LinkID, e: Event) => void`
+</Accordion>
+
+<Accordion title="onLinkDblClick">
+  **Fires:** When the user double-clicks a dependency link.
+
+  **Signature:** `(id: LinkID, e: Event) => boolean`
+
+  Return `false` to prevent the default action (opening the delete confirmation).
+</Accordion>
+
+<Accordion title="onLinkCreated">
+  **Fires:** When a new link object is created by dragging, before it is saved.
+
+  **Signature:** `(link: ILink) => boolean`
+
+  Return `false` to discard the new link.
+</Accordion>
+
+<Accordion title="onLinkValidation">
+  **Fires:** When a link is validated after being drawn.
+
+  **Signature:** `(link: ILink) => boolean`
+
+  Return `false` if the link is invalid.
+</Accordion>
+
+<Accordion title="onBeforeLinkDisplay">
+  **Fires:** After links are loaded but before each is rendered. Return `false` to hide the link.
+
+  **Signature:** `(id: LinkID, link: ILink) => boolean`
+</Accordion>
+
+---
+
+## Drag events
+
+<Accordion title="onBeforeTaskDrag">
+  **Fires:** After the mouse button is pressed on a task bar and dragging is about to start. Return `false` to prevent drag.
+
+  **Signature:** `(id: TaskID, mode: string, e: Event) => boolean`
+
+  `mode` values: `"move"`, `"resize"`, `"progress"`, `"ignore"`.
+
+  ```js
+  gantt.attachEvent("onBeforeTaskDrag", function(id, mode, e) {
+    if (mode === "resize" && gantt.getTask(id).readonly) return false;
+    return true;
+  });
+  ```
+</Accordion>
+
+<Accordion title="onTaskDrag">
+  **Fires:** Continuously while a task is being dragged.
+
+  **Signature:** `(id: TaskID, mode: string, task: ITask, original: ITask) => void`
+</Accordion>
+
+<Accordion title="onBeforeTaskChanged">
+  **Fires:** After the user releases the mouse button but before the task's new dates are committed.
+
+  **Signature:** `(id: TaskID, mode: string, task: ITask) => boolean`
+
+  Return `false` to discard the drag and revert the task.
+
+  ```js
+  gantt.attachEvent("onBeforeTaskChanged", function(id, mode, task) {
+    const newTask = gantt.getTask(id);
+    if (newTask.start_date < minDate) return false;
+    return true;
+  });
+  ```
+</Accordion>
+
+<Accordion title="onAfterTaskDrag">
+  **Fires:** After dragging is complete and changes have been applied.
+
+  **Signature:** `(id: TaskID, mode: string, e: Event) => void`
+</Accordion>
+
+<Accordion title="onTaskDragStart">
+  **Fires:** When the drag operation actually starts (after the initial mouse move threshold).
+
+  **Signature:** `(id: TaskID) => boolean`
+</Accordion>
+
+<Accordion title="onRowDragStart">
+  **Fires:** When the user starts to drag a grid row to reorder it.
+
+  **Signature:** `(id: TaskID, target: TaskID, e: Event) => boolean`
+</Accordion>
+
+<Accordion title="onRowDragEnd">
+  **Fires:** When the user drops a grid row after reordering.
+
+  **Signature:** `(id: TaskID, target: TaskID) => void`
+</Accordion>
+
+<Accordion title="onBeforeRowDragEnd">
+  **Fires:** Before a row drag-and-drop reorder is committed. Return `false` to cancel.
+
+  **Signature:** `(sid: TaskID, parent: TaskID, tindex: number) => boolean`
+</Accordion>
+
+---
+
+## Data events
+
+<Accordion title="onBeforeParse">
+  **Fires:** Before `gantt.parse()` or `gantt.load()` starts processing data.
+
+  **Signature:** `() => void`
+</Accordion>
+
+<Accordion title="onParse">
+  **Fires:** After data has been fully parsed and loaded into the data stores.
+
+  **Signature:** `() => void`
+
+  ```js
+  gantt.attachEvent("onParse", function() {
+    console.log("Loaded", gantt.getTaskCount(), "tasks");
+  });
+  ```
+</Accordion>
+
+<Accordion title="onBeforeDataRender">
+  **Fires:** Before the chart re-renders after a data change.
+
+  **Signature:** `() => void`
+</Accordion>
+
+<Accordion title="onDataRender">
+  **Fires:** After data has been rendered to the DOM.
+
+  **Signature:** `() => void`
+</Accordion>
+
+<Accordion title="onClear">
+  **Fires:** After `gantt.clearAll()` removes all data.
+
+  **Signature:** `() => void`
+</Accordion>
+
+---
+
+## UI and lifecycle events
+
+<Accordion title="onGanttReady">
+  **Fires:** After `gantt.init()` has completed initialization but before the chart is first rendered.
+
+  **Signature:** `() => void`
+
+  ```js
+  gantt.attachEvent("onGanttReady", function() {
+    gantt.ext.zoom.init({ trigger: "wheel" });
+  });
+  ```
+</Accordion>
+
+<Accordion title="onGanttRender">
+  **Fires:** After every full re-render of the chart (including the initial render).
+
+  **Signature:** `() => void`
+</Accordion>
+
+<Accordion title="onBeforeGanttRender">
+  **Fires:** Before a full re-render begins.
+
+  **Signature:** `() => void`
+</Accordion>
+
+<Accordion title="onGanttScroll">
+  **Fires:** When the timeline or grid scrolls.
+
+  **Signature:** `(left: number, top: number) => void`
+</Accordion>
+
+<Accordion title="onContextMenu">
+  **Fires:** When the user right-clicks anywhere in the chart.
+
+  **Signature:** `(taskId: TaskID, linkId: LinkID, e: Event) => void`
+
+  `taskId` or `linkId` will be `null` if the click was not on a task or link.
+
+  ```js
+  gantt.attachEvent("onContextMenu", function(taskId, linkId, e) {
+    e.preventDefault();
+    if (taskId) showContextMenu(e.clientX, e.clientY, taskId);
+  });
+  ```
+</Accordion>
+
+<Accordion title="onEmptyClick">
+  **Fires:** When the user clicks on an empty area of the chart (not on a task bar or grid row).
+
+  **Signature:** `(e: Event) => void`
+</Accordion>
+
+<Accordion title="onBeforeLightbox">
+  **Fires:** Before the lightbox (task edit dialog) opens. Return `false` to prevent opening.
+
+  **Signature:** `(id: TaskID) => boolean`
+
+  ```js
+  gantt.attachEvent("onBeforeLightbox", function(id) {
+    const task = gantt.getTask(id);
+    return !task.locked; // prevent editing locked tasks
+  });
+  ```
+</Accordion>
+
+<Accordion title="onAfterLightbox">
+  **Fires:** After the lightbox is closed (by save, cancel, or delete).
+
+  **Signature:** `() => void`
+</Accordion>
+
+<Accordion title="onLightboxSave">
+  **Fires:** When the user clicks the Save button in the lightbox. Return `false` to prevent saving.
+
+  **Signature:** `(id: TaskID, task: ITask, is_new: boolean) => boolean`
+</Accordion>
+
+<Accordion title="onLightboxCancel">
+  **Fires:** When the user clicks the Cancel button in the lightbox.
+
+  **Signature:** `(id: TaskID, is_new: boolean) => void`
+</Accordion>
+
+<Accordion title="onLightboxDelete">
+  **Fires:** When the user clicks the Delete button in the lightbox.
+
+  **Signature:** `(id: TaskID) => boolean`
+
+  Return `false` to prevent deletion.
+</Accordion>
+
+<Accordion title="onGridHeaderClick">
+  **Fires:** When the user clicks a column header in the grid.
+
+  **Signature:** `(name: string, e: Event) => boolean`
+</Accordion>
+
+<Accordion title="onColumnResizeStart">
+  **Fires:** Before the user starts dragging a column border. Return `false` to prevent resize.
+
+  **Signature:** `(index: number, column: IColumnItem) => boolean`
+</Accordion>
+
+<Accordion title="onColumnResize">
+  **Fires:** While the user is dragging a column border.
+
+  **Signature:** `(index: number, column: IColumnItem, new_width: number) => void`
+</Accordion>
+
+<Accordion title="onColumnResizeEnd">
+  **Fires:** After column resize is complete.
+
+  **Signature:** `(index: number, column: IColumnItem, new_width: number) => boolean`
+</Accordion>
+
+<Accordion title="onScaleClick">
+  **Fires:** When the user clicks on a scale cell in the timeline header.
+
+  **Signature:** `(e: Event, date: Date) => void`
+</Accordion>
+
+<Accordion title="onTemplatesReady">
+  **Fires:** After all default templates have been initialized, just before the first render.
+
+  **Signature:** `() => void`
+
+  This is the recommended place to override `gantt.templates` functions.
+
+  ```js
+  gantt.attachEvent("onTemplatesReady", function() {
+    gantt.templates.task_text = function(start, end, task) {
+      return task.text + " (" + task.progress * 100 + "%)";
+    };
+  });
+  ```
+</Accordion>
+
+<Accordion title="onDestroy">
+  **Fires:** After `gantt.destructor()` is called on a chart instance.
+
+  **Signature:** `() => void`
+</Accordion>

@@ -1,0 +1,228 @@
+---
+title: "Configuring Grid Columns in DHTMLX Gantt"
+sidebarTitle: "Grid Columns"
+description: "Learn how to define, customize, and resize grid columns in DHTMLX Gantt using gantt.config.columns and the IColumnItem interface."
+---
+
+The grid panel on the left side of a Gantt chart is built from an array of column descriptors. Each descriptor controls what data the column displays, how it looks, and whether a user can resize it. You configure these columns via `gantt.config.columns` — an array of `IColumnItem` objects — before calling `gantt.init()`.
+
+## Default Column Set
+
+Out of the box, Gantt renders four columns: the task name tree column, start date, duration, and an "add task" button. The default configuration looks like this:
+
+```javascript
+gantt.config.columns = [
+  { name: "text",       tree: true, width: "*", resize: true },
+  { name: "start_date", align: "center",        resize: true },
+  { name: "duration",   align: "center" },
+  { name: "add",        width: 44 }
+];
+```
+
+The `"*"` width on the text column means it expands to fill whatever space remains after fixed-width columns are measured.
+
+## The `IColumnItem` Interface
+
+Every entry in `gantt.config.columns` must satisfy the following shape (all fields except `name` are optional):
+
+<ParamField path="name" type="string" required>
+  Maps to a property on the task object (e.g., `"text"`, `"start_date"`, `"duration"`). The special value `"add"` renders an add-task button.
+</ParamField>
+
+<ParamField path="label" type="string">
+  Column header text. Falls back to the locale label (`gantt.locale.labels["column_" + name]`) when omitted.
+</ParamField>
+
+<ParamField path="tree" type="boolean">
+  When `true`, the column renders tree indentation, expand/collapse arrows, and the task hierarchy. Exactly one column should have `tree: true`.
+</ParamField>
+
+<ParamField path="align" type='"left" | "center" | "right"'>
+  Horizontal text alignment of cell content. Defaults to `"left"`.
+</ParamField>
+
+<ParamField path="width" type="number | string">
+  Column width in pixels, or `"*"` to take up remaining space.
+</ParamField>
+
+<ParamField path="hide" type="boolean">
+  Hides the column without removing it from the config. Useful for toggling columns dynamically.
+</ParamField>
+
+<ParamField path="resize" type="boolean">
+  Shows a drag handle so the user can resize the column at runtime.
+</ParamField>
+
+<ParamField path="min_width" type="number">
+  The smallest pixel width the column can be dragged to.
+</ParamField>
+
+<ParamField path="max_width" type="number">
+  The largest pixel width the column can be dragged to.
+</ParamField>
+
+<ParamField path="template" type="(task: object) => string">
+  A function that receives the task object and returns an HTML string for the cell content. Overrides the default value rendering.
+</ParamField>
+
+## The Tree Column
+
+Setting `tree: true` on a column makes it the hierarchy column. It automatically draws indentation for child tasks, collapse/expand buttons for parent tasks, and a folder icon for project-type tasks. There should be only one tree column per grid.
+
+```javascript
+gantt.config.columns = [
+  { name: "text", label: "Task Name", tree: true, width: 250, resize: true },
+  { name: "start_date", label: "Start",    align: "center", width: 100, resize: true },
+  { name: "duration",   label: "Days",     align: "center", width: 60  },
+  { name: "add",        width: 44 }
+];
+
+gantt.init("gantt_here");
+```
+
+## The `add` Column
+
+Naming a column `"add"` turns it into a one-click button that creates a new task at the root level. It renders no text — only the `+` icon — so keep its width small (44 px is the recommended default).
+
+```javascript
+{ name: "add", width: 44 }
+```
+
+To remove the button entirely, simply omit this entry from the columns array.
+
+## Custom Column Templates
+
+When none of the built-in task properties suit your needs, supply a `template` function. The function receives the full task object and must return a string (HTML is allowed).
+
+```javascript
+gantt.config.columns = [
+  { name: "text",     tree: true, width: "*", resize: true },
+  { name: "start_date", align: "center", resize: true },
+  { name: "duration",   align: "center" },
+  {
+    name: "progress_bar",
+    label: "Progress",
+    width: 80,
+    align: "center",
+    template: function(task) {
+      var pct = Math.round((task.progress || 0) * 100);
+      return "<div style='width:" + pct + "%;background:#65c16f;height:8px;border-radius:4px'></div>";
+    }
+  },
+  { name: "add", width: 44 }
+];
+```
+
+<Tip>
+  Template functions can return arbitrary HTML strings, so you can embed icons, progress bars, badges, or any markup that makes sense for your data.
+</Tip>
+
+The layout sample `10_layout/01_rightside_columns.html` demonstrates a second grid on the right side of the timeline where each column uses a template:
+
+```javascript
+var statusColumns = {
+  columns: [
+    {
+      name: "status",
+      label: "Progress %",
+      width: 60,
+      align: "center",
+      template: function(task) {
+        return Math.floor((task.progress || 0) * 100) + "%";
+      }
+    },
+    {
+      name: "impact",
+      label: "Cost Impact",
+      width: 90,
+      template: function(task) {
+        return (task.duration * 1000).toLocaleString("en-US", {
+          style: "currency",
+          currency: "USD"
+        });
+      }
+    }
+  ]
+};
+```
+
+## Column Resizing
+
+Set `resize: true` on any column to give the user a drag handle between that column and its right neighbour.
+
+```javascript
+gantt.config.columns = [
+  { name: "text",       tree: true,   width: "*",  resize: true },
+  { name: "start_date", align: "center",            resize: true },
+  { name: "duration",   align: "center" },
+  { name: "add",        width: 44 }
+];
+```
+
+Two related config properties control resize behaviour:
+
+<ParamField path="gantt.config.keep_grid_width" type="boolean" default="false">
+  When `false` (default), resizing a column can grow the total grid width. Set to `true` to keep the overall grid width constant — widening one column will shrink others.
+</ParamField>
+
+<ParamField path="gantt.config.min_grid_column_width" type="number" default="70">
+  The global minimum column width in pixels that applies during resize operations. Per-column `min_width` takes precedence when set.
+</ParamField>
+
+<ParamField path="gantt.config.grid_resize" type="boolean" default="false">
+  Allows the user to resize the entire grid panel (not just individual columns) by dragging the grid/timeline boundary.
+</ParamField>
+
+### Clamping Column Size
+
+Use `min_width` and `max_width` on individual columns to clamp resize range:
+
+```javascript
+gantt.config.columns = [
+  {
+    name: "text",
+    tree: true,
+    width: 200,
+    min_width: 100,
+    max_width: 400,
+    resize: true
+  },
+  { name: "start_date", align: "center", width: 100 },
+  { name: "duration",   align: "center", width: 60  },
+  { name: "add",        width: 44 }
+];
+```
+
+## Hiding Columns Dynamically
+
+Toggle visibility without modifying the columns array by setting `hide`:
+
+```javascript
+// Hide the duration column at runtime
+var col = gantt.config.columns.find(function(c) {
+  return c.name === "duration";
+});
+if (col) {
+  col.hide = true;
+}
+gantt.render();
+```
+
+## Auto-Fit Columns
+
+Setting `gantt.config.autofit = true` makes columns distribute available grid width equally among themselves, ignoring explicit widths. This is useful when the grid container has a fixed size and you want every column to share it evenly.
+
+```javascript
+gantt.config.autofit = true;
+
+gantt.config.columns = [
+  { name: "text",       tree: true },
+  { name: "start_date", align: "center" },
+  { name: "duration",   align: "center" },
+  { name: "add",        width: 44 }
+];
+```
+
+<Note>
+  `autofit` ignores individual `width` values (except for columns with a fixed numeric width that you explicitly set). Columns marked `width: "*"` share whatever space is left over after fixed columns are measured.
+</Note>

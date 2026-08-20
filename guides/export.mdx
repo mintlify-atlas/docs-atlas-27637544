@@ -1,0 +1,212 @@
+---
+title: "Exporting DHTMLX Gantt to PDF, PNG, Excel, and More"
+sidebarTitle: "Export"
+description: "Export DHTMLX Gantt charts to PDF, PNG, Excel, iCal, and MS Project using the export_api plugin and the DHTMLX online export service."
+---
+
+DHTMLX Gantt can export the current chart to several file formats through the `export_api` plugin. All export methods send the chart data and configuration to the DHTMLX online export service (`https://export.dhtmlx.com/gantt`), which renders the file server-side and returns it as a download.
+
+## Activating the Plugin
+
+The export methods are not available until the `export_api` plugin is activated with `gantt.plugins()` before `gantt.init()`:
+
+```js
+gantt.plugins({
+  export_api: true
+});
+
+gantt.init("gantt_here");
+gantt.parse(data);
+```
+
+After activation, the methods are available as both `gantt.exportToPDF()` (legacy shorthand) and `gantt.ext.export_api.exportToPDF()` (namespaced form).
+
+<Note>
+  All export methods require an active internet connection to reach `https://export.dhtmlx.com/gantt`. The export service is provided by DHTMLX and processes the chart data remotely. Do not use these methods in air-gapped environments or with data that must not leave your network.
+</Note>
+
+## Export Methods
+
+### exportToPDF
+
+Exports the chart as a PDF file. The file is downloaded in the user's browser.
+
+```js
+gantt.ext.export_api.exportToPDF({
+  name: "project-schedule.pdf"
+});
+```
+
+**Config options:**
+
+| Option | Type | Description |
+|--------|------|-------------|
+| `name` | `string` | Output filename (default: `"gantt.pdf"`) |
+| `start` | `string` | Restrict export to tasks starting from this date (uses `date_format`) |
+| `end` | `string` | Restrict export to tasks ending before this date (uses `date_format`) |
+| `skin` | `string` | Visual skin: `"material"`, `"skyblue"`, `"broadway"`, `"dark"`, etc. |
+| `raw` | `boolean` | Export the chart as rendered HTML (captures CSS) rather than structured data |
+| `callback` | `function` | Called with export result instead of triggering a download |
+
+```js
+// Export a specific date range with the Material skin
+gantt.ext.export_api.exportToPDF({
+  name:  "q3-schedule.pdf",
+  start: "2026-07-01",
+  end:   "2026-09-30",
+  skin:  "material"
+});
+```
+
+---
+
+### exportToPNG
+
+Exports the chart as a PNG image. The API and options are identical to `exportToPDF`.
+
+```js
+gantt.ext.export_api.exportToPNG({
+  name: "gantt-screenshot.png"
+});
+
+// Dark-mode export
+gantt.ext.export_api.exportToPNG({ skin: "dark" });
+```
+
+---
+
+### exportToExcel
+
+Exports the task list and timeline as an Excel (`.xlsx`) file. The grid columns and timeline columns are included.
+
+```js
+gantt.ext.export_api.exportToExcel({
+  name:  "project-tasks.xlsx",
+  start: "2026-06-01",
+  end:   "2026-12-31"
+});
+```
+
+**Additional options for Excel:**
+
+| Option | Type | Description |
+|--------|------|-------------|
+| `visual` | `string` | `"base-colors"` to include bar colors in the output |
+| `cellColors` | `boolean` | Include cell background colors from `timeline_cell_class` |
+| `raw` | `boolean` | Export as seen (respects hidden columns) |
+
+```js
+// Include visual bar colors in the spreadsheet
+gantt.ext.export_api.exportToExcel({
+  name:   "visual-export.xlsx",
+  visual: "base-colors"
+});
+```
+
+---
+
+### exportToICal
+
+Exports all tasks as an iCalendar (`.ics`) file, which can be imported into Google Calendar, Outlook, and other calendar apps.
+
+```js
+gantt.ext.export_api.exportToICal({
+  name: "project-schedule.ics"
+});
+```
+
+The task text returned by `gantt.templates.task_text` is used as the event summary in the exported calendar. Links are not included.
+
+---
+
+### exportToMSProject
+
+Exports the chart as an MS Project XML file (`.xml`). This format can be opened in Microsoft Project and compatible tools.
+
+```js
+gantt.ext.export_api.exportToMSProject({
+  name: "project.xml"
+});
+```
+
+Circular dependency links are skipped automatically (controlled by `skip_circular_links: true`, which is the default). To include them:
+
+```js
+gantt.ext.export_api.exportToMSProject({
+  name:                  "project.xml",
+  skip_circular_links:   false
+});
+```
+
+---
+
+### exportToJSON (structured data export)
+
+Downloads a JSON file containing the full chart state, including configuration and column definitions. Useful for archiving or transferring chart state between systems.
+
+```js
+gantt.ext.export_api.exportToJSON({
+  name: "project.json"
+});
+```
+
+## Common Pattern: Export Buttons
+
+```html
+<button onclick="gantt.ext.export_api.exportToPDF()">Export PDF</button>
+<button onclick="gantt.ext.export_api.exportToPNG()">Export PNG</button>
+<button onclick="gantt.ext.export_api.exportToExcel()">Export Excel</button>
+```
+
+```js
+gantt.plugins({ export_api: true });
+gantt.init("gantt_here");
+```
+
+## Using a Custom Export Server
+
+If you operate your own instance of the DHTMLX export service, override the `_apiUrl` before calling an export method:
+
+```js
+gantt.ext.export_api._apiUrl = "https://your-export-server.example.com/gantt";
+gantt.ext.export_api.exportToPDF({ name: "output.pdf" });
+```
+
+## Using a Callback Instead of a Download
+
+Pass a `callback` function to receive the export result programmatically rather than triggering a file download:
+
+```js
+gantt.ext.export_api.exportToPDF({
+  name:     "gantt.pdf",
+  callback: function (result) {
+    if (result) {
+      console.log("Export URL:", result.url);
+    }
+  }
+});
+```
+
+## Import Methods
+
+The `export_api` plugin also provides import capabilities:
+
+| Method | Description |
+|--------|-------------|
+| `gantt.ext.export_api.importFromExcel(config)` | Parse an Excel file and load task data into the chart |
+| `gantt.ext.export_api.importFromMSProject(config)` | Parse an MS Project XML file |
+| `gantt.ext.export_api.importFromPrimaveraP6(config)` | Parse a Primavera P6 XML file |
+
+```js
+document.getElementById("file-input").addEventListener("change", function (e) {
+  gantt.ext.export_api.importFromMSProject({
+    data: e.target.files[0],
+    callback: function (project) {
+      if (project && project.data) {
+        gantt.clearAll();
+        gantt.parse(project.data);
+      }
+    }
+  });
+});
+```

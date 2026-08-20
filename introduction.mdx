@@ -1,0 +1,153 @@
+---
+title: "DHTMLX Gantt: Open-Source JavaScript Gantt Chart"
+sidebarTitle: "Introduction"
+description: "DHTMLX Gantt is a framework-agnostic, MIT-licensed JavaScript Gantt chart for project scheduling, timelines, task dependencies, and drag-and-drop editing."
+---
+
+DHTMLX Gantt is an open-source JavaScript Gantt chart library for building interactive project timelines. It ships as the `dhtmlx-gantt` npm package (version 10.0.1) under the **MIT License** with fully readable TypeScript and JavaScript source code you can fork, modify, and rebuild. It is framework-agnostic and works with plain JavaScript as well as React, Angular, Vue, and Svelte.
+
+## Key Features
+
+The Community Edition covers the complete everyday Gantt feature set, including projects (summary tasks) and milestones.
+
+<CardGroup cols={2}>
+  <Card title="Task Grid" icon="table-columns">
+    Any number of configurable columns, a tree column, and inline cell editing.
+  </Card>
+  <Card title="Projects & Milestones" icon="flag">
+    Task types with type-aware rendering and a lightbox editor.
+  </Card>
+  <Card title="Zoomable Time Scale" icon="magnifying-glass">
+    Single or dual scale with configurable unit (hour … year) and step.
+  </Card>
+  <Card title="Four Dependency Types" icon="arrow-right-arrow-left">
+    Finish-to-start, start-to-start, finish-to-finish, and start-to-finish links with lag and drag-to-create.
+  </Card>
+  <Card title="Drag-and-Drop Scheduling" icon="hand-pointer">
+    Move task bars to reschedule; resize bars to change duration.
+  </Card>
+  <Card title="Progress Indicators" icon="bars-progress">
+    Completion shown as a filled bar segment, editable in the lightbox.
+  </Card>
+  <Card title="Smart Rendering" icon="bolt">
+    Only visible rows and columns are drawn, so large datasets stay fast.
+  </Card>
+  <Card title="Plugins" icon="puzzle-piece">
+    Tooltips, quick info, keyboard navigation, fullscreen, drag-timeline, and click-drag.
+  </Card>
+  <Card title="Data Loading & Saving" icon="database">
+    JSON/XML parsing and serialization, REST `dataProcessor` for two-way sync.
+  </Card>
+  <Card title="Export" icon="file-export">
+    PDF, PNG, Excel, iCal, and MS Project via the DHTMLX online export service.
+  </Card>
+  <Card title="Skins & Locales" icon="palette">
+    Material, Terrace, Meadow, Broadway, Skyblue skins and 32 built-in locales.
+  </Card>
+  <Card title="TypeScript" icon="code">
+    Bundled type definitions for full IDE autocompletion and type safety.
+  </Card>
+</CardGroup>
+
+Additional capabilities in the full feature list include:
+
+- **Lightbox task editor** — configurable modal dialog with support for custom controls
+- **Multiple chart instances** — render several independent Gantt charts on one page via the `Gantt` factory
+- **Templates** — override any rendered element (bars, grid cells, scale cells, tooltips)
+- **Grid column resizing** and a column-configuration API
+- **Event system** — 100+ events covering interactions and lifecycle hooks
+- **WAI-ARIA accessibility**, touch support, and CSP-compliant mode
+
+## Community vs PRO
+
+The Community Edition is intended for schedule visualization and manual editing. Production project-management features — auto-scheduling, critical path, resource planning — are part of the commercial PRO edition.
+
+<Tabs>
+  <Tab title="Community (MIT)">
+    | Feature | Available |
+    |:---|:---:|
+    | Task grid, columns, tree, inline editing | ✓ |
+    | Zoomable single/dual time scale | ✓ |
+    | Projects / summary tasks, milestones | ✓ |
+    | Four dependency types (FS/SS/FF/SF) + lag | ✓ |
+    | Drag-and-drop scheduling & bar resize | ✓ |
+    | Progress, lightbox editor, templates | ✓ |
+    | Smart rendering for large datasets | ✓ |
+    | Multiple chart instances per page | ✓ |
+    | Tooltips, quick info, keyboard nav, fullscreen | ✓ |
+    | Drag-timeline, click-drag, grid column resize | ✓ |
+    | Skins, 32 locales, accessibility, touch | ✓ |
+    | JSON/XML loading, REST dataProcessor | ✓ |
+    | Export to PDF/PNG/Excel/iCal/MS Project | ✓ |
+    | Auto-scheduling | ✗ |
+    | Critical path & slack | ✗ |
+    | Resource management | ✗ |
+    | Baselines & deadlines | ✗ |
+    | Constraints | ✗ |
+    | Split tasks & rollups | ✗ |
+    | WBS codes | ✗ |
+    | Grouping | ✗ |
+    | Dynamic (on-demand) loading | ✗ |
+    | Undo / redo | ✗ |
+    | Multi-task selection & drag | ✗ |
+    | Timeline markers / today line | ✗ |
+    | Unscheduled tasks & new-task placeholder | ✗ |
+    | Working-time calendars | ✗ |
+  </Tab>
+  <Tab title="PRO">
+    | Feature | Available |
+    |:---|:---:|
+    | Task grid, columns, tree, inline editing | ✓ |
+    | Zoomable single/dual time scale | ✓ |
+    | Projects / summary tasks, milestones | ✓ |
+    | Four dependency types (FS/SS/FF/SF) + lag | ✓ |
+    | Drag-and-drop scheduling & bar resize | ✓ |
+    | Progress, lightbox editor, templates | ✓ |
+    | Smart rendering for large datasets | ✓ |
+    | Multiple chart instances per page | ✓ |
+    | Tooltips, quick info, keyboard nav, fullscreen | ✓ |
+    | Drag-timeline, click-drag, grid column resize | ✓ |
+    | Skins, 32 locales, accessibility, touch | ✓ |
+    | JSON/XML loading, REST dataProcessor | ✓ |
+    | Export to PDF/PNG/Excel/iCal/MS Project | ✓ |
+    | **Auto-scheduling** | ✓ |
+    | **Critical path & slack** | ✓ |
+    | **Resource management** (assignments, histogram, grouping) | ✓ |
+    | **Baselines & deadlines** | ✓ |
+    | **Constraints** | ✓ |
+    | **Split tasks & rollups** | ✓ |
+    | **WBS codes** | ✓ |
+    | **Grouping** | ✓ |
+    | **Dynamic (on-demand) loading** | ✓ |
+    | **Undo / redo** | ✓ |
+    | **Multi-task selection & drag** | ✓ |
+    | **Timeline markers / today line** | ✓ |
+    | **Unscheduled tasks & new-task placeholder** | ✓ |
+    | **Working-time calendars** (setWorkTime, custom work calendars) | ✓ |
+  </Tab>
+</Tabs>
+
+<Note>
+  The bundled `codebase/dhtmlxgantt.d.ts` describes the full product API and therefore lists some PRO-only methods not present in the Community Edition.
+</Note>
+
+## License
+
+The Community Edition is released under the **MIT License** (Copyright © 2026 XB Software Ltd.). You are free to use, copy, modify, merge, publish, distribute, sublicense, and sell copies of the software in any project — including closed-source and commercial applications — subject only to the MIT License terms.
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Install the package and render your first Gantt chart in minutes.
+  </Card>
+  <Card title="Installation" icon="download" href="/installation">
+    All installation methods: npm, CDN, bundler, and TypeScript setup.
+  </Card>
+  <Card title="PRO Edition" icon="star" href="https://dhtmlx.com/docs/products/dhtmlxGantt/download.shtml">
+    Download a free 30-day PRO trial for advanced project management.
+  </Card>
+  <Card title="API Reference" icon="book" href="https://docs.dhtmlx.com/gantt/api/">
+    Config properties, templates, events, and methods.
+  </Card>
+</CardGroup>

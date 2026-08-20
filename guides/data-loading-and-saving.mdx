@@ -1,0 +1,212 @@
+---
+title: "Loading and Saving Data in DHTMLX Gantt"
+sidebarTitle: "Data Loading"
+description: "Load JSON data with gantt.parse(), fetch from a server with gantt.load(), export with gantt.serialize(), and configure date formats in DHTMLX Gantt."
+---
+
+DHTMLX Gantt separates the chart rendering from the data source. You can supply data inline as a JavaScript object, fetch it from a server URL, or re-import data you previously serialized. The data shape is consistent across all three paths: an object with a `data` array of tasks and a `links` array of dependency links.
+
+## JSON Data Format
+
+The expected structure for both `gantt.parse()` and server responses to `gantt.load()` is:
+
+```json
+{
+  "data": [
+    {
+      "id": 1,
+      "text": "Website redesign",
+      "type": "project",
+      "progress": 0.4,
+      "open": true
+    },
+    {
+      "id": 2,
+      "text": "Research",
+      "start_date": "2026-06-01",
+      "duration": 4,
+      "parent": 1,
+      "progress": 1
+    },
+    {
+      "id": 3,
+      "text": "Wireframes",
+      "start_date": "2026-06-05",
+      "duration": 6,
+      "parent": 1,
+      "progress": 0.6
+    }
+  ],
+  "links": [
+    { "id": 1, "source": 2, "target": 3, "type": "0" }
+  ]
+}
+```
+
+**Task fields:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | `string \| number` | Unique identifier |
+| `text` | `string` | Display label |
+| `start_date` | `string \| Date` | Start date, parsed using `gantt.config.date_format` |
+| `end_date` | `string \| Date` | End date (alternative to `duration`) |
+| `duration` | `number` | Duration in `gantt.config.duration_unit` units |
+| `parent` | `string \| number` | ID of parent task (0 or omit for root) |
+| `progress` | `number` | Completion ratio, 0–1 |
+| `type` | `string` | `"task"`, `"project"`, or `"milestone"` |
+| `open` | `boolean` | Whether the project node is expanded |
+
+**Link fields:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | `string \| number` | Unique identifier |
+| `source` | `string \| number` | ID of the predecessor task |
+| `target` | `string \| number` | ID of the successor task |
+| `type` | `"0" \| "1" \| "2" \| "3"` | Dependency type: `"0"` = finish-to-start, `"1"` = start-to-start, `"2"` = finish-to-finish, `"3"` = start-to-finish |
+
+## Configuring the Date Format
+
+Before loading any data, set `gantt.config.date_format` to the format of the date strings in your data. The default is `"%d-%m-%Y"`.
+
+```js
+gantt.config.date_format = "%Y-%m-%d";
+gantt.init("gantt_here");
+```
+
+Common format tokens:
+
+| Token | Value |
+|-------|-------|
+| `%Y` | 4-digit year |
+| `%m` | 2-digit month (01–12) |
+| `%d` | 2-digit day (01–31) |
+| `%H` | Hour (00–23) |
+| `%i` | Minutes (00–59) |
+
+You can also use `"iso"` for ISO 8601 strings (`2026-06-01T00:00:00`):
+
+```js
+gantt.config.date_format = "iso";
+```
+
+## gantt.parse() — Inline Data
+
+`gantt.parse(data)` loads a JavaScript object or a JSON string directly, without a network request. Suitable for static data, test fixtures, or data already fetched by your own code.
+
+```js
+gantt.config.date_format = "%Y-%m-%d";
+gantt.init("gantt_here");
+
+gantt.parse({
+  data: [
+    { id: 1, text: "Project Alpha", type: "project", open: true },
+    { id: 2, text: "Design",  start_date: "2026-06-01", duration: 5, parent: 1, progress: 0.8 },
+    { id: 3, text: "Build",   start_date: "2026-06-08", duration: 10, parent: 1, progress: 0.3 },
+    { id: 4, text: "Release", start_date: "2026-06-18", type: "milestone", parent: 1 }
+  ],
+  links: [
+    { id: 1, source: 2, target: 3, type: "0" },
+    { id: 2, source: 3, target: 4, type: "0" }
+  ]
+});
+```
+
+<Note>
+  `gantt.parse()` **replaces** the current chart data with the new dataset. To add tasks incrementally, use `gantt.addTask()` and `gantt.addLink()` instead.
+</Note>
+
+## gantt.load() — Server Fetch
+
+`gantt.load(url, type?, callback?)` issues an HTTP GET request to `url` and calls `gantt.parse()` on the response. The chart renders automatically when the response arrives.
+
+```js
+gantt.config.date_format = "%Y-%m-%d %H:%i";
+gantt.init("gantt_here");
+
+gantt.load("/api/gantt-data");
+```
+
+Provide an optional callback for post-load logic:
+
+```js
+gantt.load("/api/gantt-data", "json", function () {
+  console.log("Data loaded, task count:", gantt.getTaskCount());
+});
+```
+
+<Warning>
+  `gantt.load()` is not available in Node.js server-side rendering contexts. Use `gantt.parse()` instead when running outside a browser.
+</Warning>
+
+## gantt.serialize() — Export to JSON
+
+`gantt.serialize()` returns a plain JavaScript object containing all current tasks and links in the same format as the input JSON. Use it to extract chart state for saving or processing.
+
+```js
+var snapshot = gantt.serialize();
+// snapshot.data  → array of task objects
+// snapshot.links → array of link objects
+
+// Persist to your own storage
+fetch("/api/gantt-data", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify(snapshot)
+});
+```
+
+## gantt.clearAll() — Reset the Chart
+
+`gantt.clearAll()` removes all tasks, links, and selected states without destroying the chart instance. The chart re-renders as empty.
+
+```js
+gantt.clearAll();
+```
+
+Use it before re-loading data to avoid duplicate entries:
+
+```js
+gantt.clearAll();
+gantt.parse(newDataset);
+```
+
+## Full Round-Trip Example
+
+This pattern covers the complete lifecycle: load data from a server, let the user edit it interactively, then serialize and save:
+
+<Steps>
+  <Step title="Configure and initialize">
+    ```js
+    gantt.config.date_format = "%Y-%m-%d";
+    gantt.init("gantt_here");
+    ```
+  </Step>
+  <Step title="Load initial data from the server">
+    ```js
+    gantt.load("/api/tasks");
+    ```
+  </Step>
+  <Step title="User edits tasks via the UI">
+    The chart handles drag-and-drop and lightbox editing automatically. No extra code needed for the interactive editing step.
+  </Step>
+  <Step title="Serialize and save">
+    ```js
+    document.getElementById("save-btn").addEventListener("click", function () {
+      var data = gantt.serialize();
+      fetch("/api/tasks", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data)
+      }).then(function (res) {
+        if (res.ok) gantt.message("Saved successfully");
+      });
+    });
+    ```
+  </Step>
+</Steps>
+
+<Tip>
+  For automatic two-way sync without a manual save step, use `gantt.createDataProcessor()`. See the [Backend Integration guide](/guides/backend-integration) for details.
+</Tip>

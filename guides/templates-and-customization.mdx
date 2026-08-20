@@ -1,0 +1,181 @@
+---
+title: "Customizing Gantt with Templates and CSS Classes"
+sidebarTitle: "Templates"
+description: "Override gantt.templates functions to control task text, bar colors, grid rows, scale cells, and tooltip content in DHTMLX Gantt."
+---
+
+DHTMLX Gantt exposes every rendered element through a single object, `gantt.templates`, which holds named functions you can replace at any time before or after `gantt.init()`. Each template function receives contextual arguments (dates, task objects, link objects) and returns either a CSS class name string or an HTML string. Because the library calls your function when it redraws each element, a single assignment replaces the default output across the entire chart.
+
+## How Templates Work
+
+`gantt.templates` is a plain JavaScript object. To customize a piece of the UI, assign a new function to the corresponding property:
+
+```js
+gantt.templates.task_text = function (start, end, task) {
+  return task.text + " (" + Math.round(task.progress * 100) + "%)";
+};
+```
+
+Templates that return class names (like `scale_cell_class`) append those classes to the host element, enabling pure-CSS visual changes. Templates that return HTML strings (like `task_text` and `tooltip_text`) inject markup directly into the element's inner HTML.
+
+<Note>
+  Templates are evaluated on every render cycle. Keep them fast — avoid expensive DOM queries or synchronous network calls inside template functions.
+</Note>
+
+## Key Templates Reference
+
+<Accordion title="task_text — bar label">
+  Called for each task bar. Return an HTML string that appears inside the bar.
+
+  **Signature:** `function(start: Date, end: Date, task: ITask): string`
+
+  ```js
+  gantt.templates.task_text = function (start, end, task) {
+    return task.text;
+  };
+  ```
+</Accordion>
+
+<Accordion title="task_class — bar CSS class">
+  Called for each task bar. Return a space-separated list of CSS class names to add to the bar element.
+
+  **Signature:** `function(start: Date, end: Date, task: ITask): string`
+
+  ```js
+  gantt.templates.task_class = function (start, end, task) {
+    if (task.priority === "high") return "high-priority";
+    return "";
+  };
+  ```
+</Accordion>
+
+<Accordion title="task_date — date label format">
+  Controls how a single Date value is displayed in the lightbox and task time labels.
+
+  **Signature:** `function(date: Date): string`
+
+  Defaults to the pattern set by `gantt.config.task_date`.
+</Accordion>
+
+<Accordion title="tooltip_text — hover tooltip content">
+  Called when the `tooltip` plugin is active. Return an HTML string shown inside the tooltip popup.
+
+  **Signature:** `function(start: Date, end: Date, task: ITask): string`
+
+  ```js
+  gantt.templates.tooltip_text = function (start, end, task) {
+    return "<b>" + task.text + "</b><br/>Duration: " + task.duration + " days";
+  };
+  ```
+</Accordion>
+
+<Accordion title="grid_row_class — grid row CSS class">
+  Called for each row in the task grid. Return CSS class names to apply to the entire grid row.
+
+  **Signature:** `function(start: Date, end: Date, task: ITask): string`
+
+  ```js
+  gantt.templates.grid_row_class = function (start, end, task) {
+    if (task.$level > 0) return "child-row";
+    return "";
+  };
+  ```
+</Accordion>
+
+<Accordion title="scale_cell_class — time-scale header cell CSS class">
+  Called for each cell in the time scale header. Return CSS class names to style the header cell.
+
+  **Signature:** `function(date: Date): string`
+</Accordion>
+
+<Accordion title="timeline_cell_class — timeline body cell CSS class">
+  Called for each cell in the timeline body (the row/column intersection). Return CSS class names.
+
+  **Signature:** `function(task: ITask, date: Date): string`
+</Accordion>
+
+## Example: Highlight Weekends
+
+The following pattern, taken directly from the bundled samples, highlights Saturday and Sunday in both the scale header and the timeline body using a single CSS class:
+
+```html
+<style>
+  .weekend {
+    background: var(--dhx-gantt-base-colors-background-alt);
+  }
+</style>
+```
+
+```js
+// Highlight scale (header) cells on weekends
+gantt.templates.scale_cell_class = function (date) {
+  if (date.getDay() === 0 || date.getDay() === 6) {
+    return "weekend";
+  }
+};
+
+// Highlight timeline body cells on weekends
+gantt.templates.timeline_cell_class = function (item, date) {
+  if (date.getDay() === 0 || date.getDay() === 6) {
+    return "weekend";
+  }
+};
+
+gantt.init("gantt_here");
+gantt.parse(data);
+```
+
+## Example: Custom HTML Inside Task Bars
+
+`task_text` can return any HTML string, enabling rich bar content such as progress segments or icons:
+
+```js
+gantt.config.show_progress = false; // disable default progress bar
+
+gantt.templates.task_text = function (start, end, task) {
+  var pct = Math.round(task.progress * 100);
+  return (
+    "<span class='bar-label'>" + task.text + "</span>" +
+    "<span class='bar-progress' style='width:" + pct + "%'></span>"
+  );
+};
+```
+
+<Tip>
+  The corresponding CSS must be included in your stylesheet. Gantt does not scope or sanitize the HTML returned by templates — you are responsible for content safety. In framework wrappers that enable Content Security Policy mode (`gantt.config.csp = true`), avoid inline `style` attributes and use CSS classes instead.
+</Tip>
+
+## Additional Template Properties
+
+<CardGroup cols={2}>
+  <Card title="progress_text" icon="percent">
+    Text overlaid on the progress portion of a task bar. Return an empty string to hide it.
+  </Card>
+  <Card title="grid_header_class" icon="table-columns">
+    CSS classes for grid column header cells.
+  </Card>
+  <Card title="link_class" icon="link">
+    CSS classes for dependency link arrows.
+  </Card>
+  <Card title="timeline_cell_content" icon="code">
+    HTML injected into each timeline body cell (for decorative content).
+  </Card>
+</CardGroup>
+
+## XSS Safety
+
+Templates that return HTML (`task_text`, `tooltip_text`, `timeline_cell_content`, etc.) inject markup directly into the DOM. If any part of the returned string comes from user-supplied data — task names, descriptions, custom fields — **sanitize it before returning it from the template function**. The library itself does not escape template output.
+
+```js
+// Unsafe — task.text could contain <script> tags from the server
+gantt.templates.task_text = function (start, end, task) {
+  return task.text; // ⚠ only safe if task.text is server-controlled
+};
+
+// Safer — escape before embedding user data in HTML context
+gantt.templates.task_text = function (start, end, task) {
+  var div = document.createElement("div");
+  div.textContent = task.text;
+  return div.innerHTML;
+};
+```

@@ -1,0 +1,353 @@
+---
+title: "Localizing DHTMLX Gantt into 50+ Languages"
+sidebarTitle: "Localization"
+description: "Apply one of 50+ built-in locales to DHTMLX Gantt, understand the locale object structure, create custom translations, and enable RTL layouts."
+---
+
+DHTMLX Gantt ships with locale files for more than 50 languages, covering month and day names, UI button labels, lightbox section headings, and confirmation messages. You switch the active locale by calling `gantt.i18n.setLocale()`, and you can extend or override any locale string without replacing the entire translation.
+
+## Applying a Built-In Locale
+
+The simplest way to localise the chart is to call `gantt.i18n.setLocale()` with a locale code before or after `gantt.init()`, then call `gantt.render()` to repaint translated labels:
+
+```javascript
+// Switch to French
+gantt.i18n.setLocale("fr");
+gantt.render();
+```
+
+At startup you can set the locale before `init`:
+
+```javascript
+gantt.i18n.setLocale("de");
+gantt.init("gantt_here");
+gantt.parse(tasks);
+```
+
+The locale demo shows how to respond to a runtime language selector:
+
+```javascript
+function changeLocale(lang) {
+  gantt.i18n.setLocale(lang);
+  gantt.render();
+}
+```
+
+## All Supported Locales
+
+The following locale codes are built into the npm package. Pass any of these strings to `gantt.i18n.setLocale()`:
+
+<Tabs>
+  <Tab title="A–G">
+    | Code | Language |
+    |---|---|
+    | `af` | Afrikaans |
+    | `sq` | Albanian |
+    | `ar` | Arabic |
+    | `be` | Belarusian |
+    | `bs` | Bosnian |
+    | `bg` | Bulgarian |
+    | `ca` | Catalan |
+    | `cn` | Chinese (Simplified) |
+    | `zh_hk` | Chinese (Hong Kong) |
+    | `zh_tw` | Chinese (Taiwan) |
+    | `hr` | Croatian |
+    | `cs` | Czech |
+    | `da` | Danish |
+    | `nl` | Dutch |
+    | `nl_be` | Dutch (Belgium) |
+    | `en` | English (default) |
+    | `et` | Estonian |
+    | `fi` | Finnish |
+    | `fr` | French (France) |
+    | `fr_ca` | French (Canada) |
+    | `de` | German (Germany) |
+    | `de_at` | German (Austria) |
+    | `el` | Greek |
+  </Tab>
+  <Tab title="H–P">
+    | Code | Language |
+    |---|---|
+    | `he` | Hebrew |
+    | `hu` | Hungarian |
+    | `id` | Indonesian |
+    | `ga` | Irish |
+    | `it` | Italian |
+    | `jp` | Japanese |
+    | `kr` | Korean |
+    | `lv` | Latvian |
+    | `lt` | Lithuanian |
+    | `mk` | Macedonian |
+    | `ms` | Malay |
+    | `nb` | Norwegian (Bokmål) |
+    | `no` | Norwegian (Nynorsk) |
+    | `fa` | Persian |
+    | `pl` | Polish |
+    | `pt` | Portuguese (Portugal) |
+    | `pt_br` | Portuguese (Brazil) |
+  </Tab>
+  <Tab title="R–Z">
+    | Code | Language |
+    |---|---|
+    | `ro` | Romanian |
+    | `ru` | Russian |
+    | `sk` | Slovak |
+    | `si` | Slovenian |
+    | `es` | Spanish (Spain) |
+    | `es_mx` | Spanish (Mexico) |
+    | `sv` | Swedish |
+    | `th` | Thai |
+    | `tr` | Turkish |
+    | `ua` | Ukrainian |
+    | `vi` | Vietnamese |
+  </Tab>
+</Tabs>
+
+## The Locale Object Structure
+
+Each locale is a plain object with two top-level keys: `date` and `labels`. Here is the complete structure from `locale_en.ts`:
+
+```typescript
+const locale: IGanttLocale = {
+  date: {
+    month_full:  ["January","February","March","April","May","June",
+                  "July","August","September","October","November","December"],
+    month_short: ["Jan","Feb","Mar","Apr","May","Jun",
+                  "Jul","Aug","Sep","Oct","Nov","Dec"],
+    day_full:    ["Sunday","Monday","Tuesday","Wednesday",
+                  "Thursday","Friday","Saturday"],
+    day_short:   ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"]
+  },
+  labels: {
+    /* Toolbar / quick-info */
+    new_task:      "New task",
+    icon_save:     "Save",
+    icon_cancel:   "Cancel",
+    icon_details:  "Details",
+    icon_edit:     "Edit",
+    icon_delete:   "Delete",
+    confirm_deleting: "Task will be deleted permanently, are you sure?",
+
+    /* Lightbox sections */
+    section_description: "Description",
+    section_time:        "Time period",
+    section_type:        "Type",
+    section_deadline:    "Deadline",
+    section_baselines:   "Baselines",
+    section_new_resources: "Resources",
+
+    /* Grid column headers */
+    column_wbs:        "WBS",
+    column_text:       "Task name",
+    column_start_date: "Start time",
+    column_duration:   "Duration",
+    column_add:        "",
+
+    /* Dependency link dialogs */
+    link:                  "Link",
+    confirm_link_deleting: "will be deleted",
+    link_start:            " (start)",
+    link_end:              " (end)",
+
+    /* Task types */
+    type_task:      "Task",
+    type_project:   "Project",
+    type_milestone: "Milestone",
+
+    /* Duration unit labels */
+    minutes: "Minutes",
+    hours:   "Hours",
+    days:    "Days",
+    weeks:   "Weeks",
+    months:  "Months",
+    years:   "Years",
+
+    /* Message popup buttons */
+    message_ok:     "OK",
+    message_cancel: "Cancel",
+
+    /* Scheduling constraints */
+    section_constraint: "Constraint",
+    constraint_type:    "Constraint type",
+    constraint_date:    "Constraint date",
+    asap: "As Soon As Possible",
+    alap: "As Late As Possible",
+    snet: "Start No Earlier Than",
+    snlt: "Start No Later Than",
+    fnet: "Finish No Earlier Than",
+    fnlt: "Finish No Later Than",
+    mso:  "Must Start On",
+    mfo:  "Must Finish On",
+
+    /* Resource assignment control */
+    resources_add_button:          "Add Assignment",
+    resources_filter_placeholder:  "Search...",
+    resources_filter_label:        "hide empty",
+    resources_section_placeholder: "Nothing assigned yet. Click 'Add Assignment' to assign resources.",
+
+    /* Empty-state screen */
+    empty_state_text_link:        "Click here",
+    empty_state_text_description: "to create your first task",
+
+    /* Baselines control */
+    baselines_section_placeholder: "Start adding a new baseline",
+    baselines_add_button:          "Add Baseline",
+    baselines_remove_button:       "Remove",
+    baselines_remove_all_button:   "Remove All",
+
+    /* Deadline control */
+    deadline_enable_button:  "Set",
+    deadline_disable_button: "Remove"
+  }
+};
+```
+
+## Creating a Custom Locale
+
+To provide a locale not yet included in the library, create an object matching the structure above and pass it to `gantt.i18n.setLocale()`:
+
+<Steps>
+  <Step title="Define the locale object">
+    Create a JavaScript object with `date` and `labels` keys. You only need to supply the strings you want to override — missing keys fall back to the English default.
+
+    ```javascript
+    var myLocale = {
+      date: {
+        month_full:  ["Urtarril","Otsail","Martxo","Apiril","Maiatz","Ekain",
+                      "Uztail","Abuztu","Irail","Urri","Azaro","Abendu"],
+        month_short: ["Urt","Ots","Mar","Api","Mai","Eka",
+                      "Uzt","Abu","Ira","Urr","Aza","Abe"],
+        day_full:    ["Igandea","Astelehena","Asteartea","Asteazkena",
+                      "Osteguna","Ostirala","Larunbata"],
+        day_short:   ["Ig","Al","Ar","Az","Og","Or","La"]
+      },
+      labels: {
+        new_task:          "Ataza berria",
+        icon_save:         "Gorde",
+        icon_cancel:       "Utzi",
+        icon_details:      "Xehetasunak",
+        icon_edit:         "Editatu",
+        icon_delete:       "Ezabatu",
+        confirm_deleting:  "Ataza betiko ezabatuko da. Ziur al zaude?",
+        section_description: "Deskribapena",
+        section_time:      "Denbora-tartea",
+        column_text:       "Ataza izena",
+        column_start_date: "Hasiera",
+        column_duration:   "Iraupena",
+        message_ok:        "Ados",
+        message_cancel:    "Utzi",
+        days: "Egunak", hours: "Orduak", minutes: "Minutuak",
+        weeks: "Asteak", months: "Hilabeteak", years: "Urteak"
+      }
+    };
+    ```
+  </Step>
+
+  <Step title="Register and apply the locale">
+    Call `gantt.i18n.setLocale()` with the object directly, or register it under a key first using `gantt.i18n.addLocale()`:
+
+    ```javascript
+    // Option A — apply directly
+    gantt.i18n.setLocale(myLocale);
+
+    // Option B — register then apply by key
+    gantt.i18n.addLocale("eu", myLocale);
+    gantt.i18n.setLocale("eu");
+    ```
+  </Step>
+
+  <Step title="Initialise and render">
+    ```javascript
+    gantt.init("gantt_here");
+    gantt.parse(tasks);
+    ```
+  </Step>
+</Steps>
+
+## Extending an Existing Locale
+
+To override just a few strings in a built-in locale, read the existing locale and merge your changes:
+
+```javascript
+// Retrieve the current locale after setLocale has been called
+var current = gantt.locale;
+
+// Patch specific labels
+gantt.locale.labels.confirm_deleting = "Are you absolutely sure you want to delete this?";
+gantt.locale.labels.new_task         = "Create Task";
+
+gantt.render();
+```
+
+<Note>
+  `gantt.locale` is a live reference to the active locale object. Mutations take effect immediately — no need to call `setLocale()` again.
+</Note>
+
+## Grid Column Header Labels
+
+Column header text is resolved from `gantt.locale.labels["column_" + column.name]` unless the column object has its own `label` property. This means you can translate built-in column headers through the locale:
+
+```javascript
+gantt.locale.labels.column_text       = "Nom de la tâche";
+gantt.locale.labels.column_start_date = "Début";
+gantt.locale.labels.column_duration   = "Durée";
+gantt.render();
+```
+
+A column-level `label` always wins over the locale fallback:
+
+```javascript
+gantt.config.columns = [
+  { name: "text", label: "Nom de la tâche", tree: true, width: "*" },
+  // ...
+];
+```
+
+## RTL (Right-to-Left) Layout
+
+Several locales — Arabic (`ar`), Hebrew (`he`), Persian (`fa`) — are written right to left. Enable RTL layout alongside the locale to mirror the visual presentation:
+
+```javascript
+gantt.i18n.setLocale("ar");
+gantt.config.rtl = true;
+
+// Rearrange the layout so the timeline is on the left and the grid on the right
+gantt.config.layout = {
+  css: "gantt_container",
+  rows: [
+    {
+      cols: [
+        { view: "scrollbar", id: "scrollVer" },
+        { view: "timeline",  scrollX: "scrollHor", scrollY: "scrollVer" },
+        { resizer: true,     width: 1 },
+        { view: "grid",      scrollX: "scrollHor", scrollY: "scrollVer" }
+      ]
+    },
+    { view: "scrollbar", id: "scrollHor", height: 20 }
+  ]
+};
+
+gantt.init("gantt_here");
+gantt.parse(tasks);
+```
+
+You may also want to align grid text to the right with a small CSS rule:
+
+```css
+.gantt_grid {
+  text-align: right;
+}
+```
+
+<Tip>
+  Setting `gantt.config.rtl = true` makes the timeline render dates from right to left (newest dates on the left side), mirrors task bar progress, and adjusts the dependency arrow drawing accordingly.
+</Tip>
+
+## The `i18n` API
+
+| Method | Description |
+|---|---|
+| `gantt.i18n.setLocale(code)` | Activates a built-in locale by its two-letter code, or applies a locale object directly |
+| `gantt.i18n.addLocale(code, localeObj)` | Registers a new locale under a key for later use with `setLocale()` |
+| `gantt.i18n.getLocale(code)` | Returns the locale object registered under the given key |
+| `gantt.locale` | Live reference to the currently active locale object |

@@ -1,0 +1,235 @@
+---
+title: "DHTMLX Gantt Dependencies: Link Types, Lag & Validation"
+sidebarTitle: "Dependencies"
+description: "Master all four Gantt link types (FS, SS, FF, SF), the lag field for delays and overlaps, drag-to-create links, and circular dependency validation."
+---
+
+Dependencies in DHTMLX Gantt are represented by link objects that connect a source (predecessor) task to a target (successor) task. There are four dependency types that model every standard project scheduling relationship. Links can be created through the JSON data, dragged interactively on the timeline, or added programmatically at runtime.
+
+## The four link types
+
+The `type` field of a link object is a numeric string defined by the `LinkType` enum:
+
+```ts
+enum LinkType {
+  finish_to_start  = "0",
+  start_to_start   = "1",
+  finish_to_finish = "2",
+  start_to_finish  = "3"
+}
+```
+
+The same values are available through `gantt.config.links`:
+
+```js
+gantt.config.links.finish_to_start;  // "0"
+gantt.config.links.start_to_start;   // "1"
+gantt.config.links.finish_to_finish; // "2"
+gantt.config.links.start_to_finish;  // "3"
+```
+
+### Link type reference
+
+| Type | String value | When does the successor start/finish? | Typical use |
+|---|---|---|---|
+| **Finish-to-Start** (FS) | `"0"` | Successor *starts* after the predecessor *finishes* | Default sequential flow: Task B can't start until Task A is done |
+| **Start-to-Start** (SS) | `"1"` | Successor *starts* when the predecessor *starts* | Parallel work: both tasks begin together |
+| **Finish-to-Finish** (FF) | `"2"` | Successor *finishes* when the predecessor *finishes* | Concurrent completion: both tasks end together |
+| **Start-to-Finish** (SF) | `"3"` | Successor *finishes* when the predecessor *starts* | Rare reverse dependency; used in just-in-time scheduling |
+
+<Tabs>
+  <Tab title="Finish-to-Start">
+    The most common dependency type. Task B cannot start until Task A finishes.
+
+    ```
+    [Task A =========]
+                      [Task B =========]
+    ```
+
+    ```js
+    { id: 1, source: 1, target: 2, type: "0" }
+    ```
+  </Tab>
+  <Tab title="Start-to-Start">
+    Both tasks start at the same time (or Task B starts after Task A starts, when combined with a positive lag).
+
+    ```
+    [Task A =========]
+    [Task B =========]
+    ```
+
+    ```js
+    { id: 2, source: 1, target: 2, type: "1" }
+    ```
+  </Tab>
+  <Tab title="Finish-to-Finish">
+    Both tasks finish at the same time. Task B cannot finish before Task A finishes.
+
+    ```
+    [Task A =========]
+          [Task B ===]
+    ```
+
+    ```js
+    { id: 3, source: 1, target: 2, type: "2" }
+    ```
+  </Tab>
+  <Tab title="Start-to-Finish">
+    Task B cannot finish until Task A starts. The reverse dependency is rare in practice.
+
+    ```
+    [Task A ===]
+    [Task B====]
+    ```
+
+    ```js
+    { id: 4, source: 1, target: 2, type: "3" }
+    ```
+  </Tab>
+</Tabs>
+
+## Lag and lead time
+
+The `lag` field shifts the relationship forward (positive) or backward (negative) by the specified number of `gantt.config.duration_unit` units:
+
+| `lag` value | Effect |
+|---|---|
+| `0` (default) | No gap or overlap |
+| Positive (e.g. `2`) | Adds a delay — successor starts/finishes 2 units *after* the dependency point |
+| Negative (e.g. `-1`) | Creates overlap — successor can start/finish 1 unit *before* the dependency point |
+
+```js
+gantt.parse({
+  data: [
+    { id: 1, text: "Design",      start_date: "2026-06-01", duration: 5 },
+    { id: 2, text: "Development", start_date: "2026-06-07", duration: 10 },
+    { id: 3, text: "QA Review",   start_date: "2026-06-16", duration: 3 }
+  ],
+  links: [
+    // 2-day lag: Development starts 2 days after Design finishes
+    { id: 1, source: 1, target: 2, type: "0", lag: 2 },
+    // -1 day lead: QA can start 1 day before Development finishes
+    { id: 2, source: 2, target: 3, type: "0", lag: -1 }
+  ]
+});
+```
+
+<Note>
+  `lag` is a display and scheduling hint. In the Community Edition (without auto-scheduling), Gantt does not enforce that task dates respect the lag — it only renders the dependency arrow. Auto-scheduling that actually enforces lag constraints is available in the PRO edition.
+</Note>
+
+## Adding links via `gantt.parse()`
+
+The simplest way to load links is to include them in the `links` array passed to `gantt.parse()`:
+
+```js
+gantt.config.date_format = "%Y-%m-%d";
+gantt.init("gantt_here");
+
+gantt.parse({
+  data: [
+    { id: 1, text: "Task A", start_date: "2026-06-01", duration: 4 },
+    { id: 2, text: "Task B", start_date: "2026-06-06", duration: 6 },
+    { id: 3, text: "Task C", start_date: "2026-06-06", duration: 3 }
+  ],
+  links: [
+    { id: 1, source: 1, target: 2, type: "0" },          // FS
+    { id: 2, source: 1, target: 3, type: "1" },          // SS
+    { id: 3, source: 2, target: 3, type: "2", lag: 1 }   // FF + 1 day lag
+  ]
+});
+```
+
+## Adding links programmatically
+
+Use `gantt.addLink()` to create a dependency at runtime. Always validate with `gantt.isCircularLink()` first to guard against circular references that would break the dependency graph:
+
+```js
+const newLink = {
+  source: 4,
+  target: 5,
+  type: gantt.config.links.finish_to_start  // "0"
+};
+
+// Guard against circular dependencies before adding
+if (!gantt.isCircularLink(newLink)) {
+  const id = gantt.addLink(newLink);
+  console.log("Created link id:", id);
+} else {
+  console.warn("Link would create a circular dependency — not added.");
+}
+```
+
+The other link CRUD methods follow the same pattern as tasks:
+
+```js
+// Read
+const link = gantt.getLink(1);
+console.log(link.type, link.source, link.target);
+
+// Update
+link.lag = 2;
+gantt.updateLink(link.id);
+
+// Delete
+gantt.deleteLink(1);
+
+// Check existence
+if (gantt.isLinkExists(99)) { /* ... */ }
+
+// Get all links
+const allLinks = gantt.getLinks();
+```
+
+## Drag-to-create links
+
+By default, users can draw new dependencies directly on the timeline by hovering over the edge of a task bar until the circular drag handle appears, then dragging to another task. This behaviour is controlled by `gantt.config.drag_links`:
+
+```js
+// Disable interactive link creation (default: true)
+gantt.config.drag_links = false;
+```
+
+When `drag_links` is `true`, the `onBeforeLinkAdd` event fires before each newly dragged link is committed. Return `false` from the handler to cancel it:
+
+```js
+gantt.attachEvent("onBeforeLinkAdd", function(id, link) {
+  // Reject links that would create circular dependencies
+  if (gantt.isCircularLink(link)) {
+    gantt.message({ type: "error", text: "Circular dependency detected." });
+    return false;
+  }
+  return true;
+});
+```
+
+## Circular dependency validation
+
+`gantt.isCircularLink(link)` traverses the existing dependency graph and returns `true` if adding the supplied link would create a cycle. Call it before `gantt.addLink()` whenever you are adding links programmatically or in the `onBeforeLinkAdd` event handler:
+
+```js
+const candidate = { source: 3, target: 1, type: "0" };
+
+if (gantt.isCircularLink(candidate)) {
+  // Task 1 → Task 2 → Task 3 already exists, so 3 → 1 would be a cycle
+  console.warn("Rejected: circular dependency.");
+} else {
+  gantt.addLink(candidate);
+}
+```
+
+<Warning>
+  Circular dependencies cause the dependency arrows on the timeline to render incorrectly and can cause infinite loops if auto-scheduling is enabled. Always validate with `gantt.isCircularLink()` before adding links at runtime.
+</Warning>
+
+## Showing and hiding link arrows
+
+Link rendering is on by default. Toggle it globally with `gantt.config.show_links`:
+
+```js
+// Hide all dependency arrows
+gantt.config.show_links = false;
+gantt.render();
+```
+
+To adjust the hit-area width around each link (making it easier or harder to click a link to select or delete it), use `gantt.config.link_wrapper_width` (default: `20` pixels) and `gantt.config.link_arrow_size` (default: `12`).

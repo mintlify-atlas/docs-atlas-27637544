@@ -1,0 +1,293 @@
+---
+title: "Customizing Gantt Chart Layout Structure"
+sidebarTitle: "Layout"
+description: "Define multi-panel Gantt layouts with grids, timelines, resizers, and scrollbars using gantt.config.layout and the ILayout interfaces."
+---
+
+DHTMLX Gantt uses a flexible, declarative layout engine that lets you arrange the grid, timeline, resizers, and scrollbars in any combination of rows and columns. You describe the entire layout through a single `gantt.config.layout` object before calling `gantt.init()`. For simpler cases, the boolean shortcuts `gantt.config.show_grid` and `gantt.config.show_chart` let you hide entire panels without touching the layout config.
+
+## Layout Object Structure
+
+The root layout object has this shape (from `config.ts`):
+
+```typescript
+interface ILayout {
+  css: string;          // CSS class on the root container — always "gantt_container"
+  rows?: LayoutRow[];   // vertical stack of panels
+  cols?: LayoutCol[];   // horizontal stack of panels
+}
+```
+
+Rows contain columns; columns can in turn contain rows. Every leaf in the tree is a named *view* — `"grid"`, `"timeline"`, `"scrollbar"`, or `"resizer"`.
+
+## Available View Types
+
+<AccordionGroup>
+  <Accordion title="grid">
+    The left-side task list panel.
+
+    ```typescript
+    interface ILayoutGrid {
+      view: "grid";
+      id?: string;
+      scrollX?: string;   // id of the horizontal scrollbar to sync with
+      scrollY?: string;   // id of the vertical scrollbar to sync with
+      bind?: string;      // data store binding — usually "task"
+      config?: object;    // override columns for this grid instance
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="timeline">
+    The Gantt bars / chart panel.
+
+    ```typescript
+    interface ILayoutTimeline {
+      view: "timeline";
+      id?: string;
+      scrollX?: string;
+      scrollY?: string;
+      bindLinks?: string;
+      layers?: any[];
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="scrollbar">
+    A shared scrollbar that multiple views can bind to via `scrollX` / `scrollY`.
+
+    ```typescript
+    interface ILayoutScrollbar {
+      view: "scrollbar";
+      id: string;         // referenced by scrollX / scrollY in other views
+      scroll?: "x" | "y";
+      height?: number;
+      width?: number;
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="resizer">
+    A draggable divider between adjacent panels.
+
+    ```typescript
+    interface ILayoutResizer {
+      resizer: true;
+      width: number;      // visual width of the drag handle in pixels
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Default Two-Panel Layout
+
+When you create a `gantt` instance without setting `gantt.config.layout`, this is the layout it uses internally:
+
+```javascript
+gantt.config.layout = {
+  css: "gantt_container",
+  rows: [
+    {
+      cols: [
+        { view: "grid",      scrollX: "scrollHor", scrollY: "scrollVer" },
+        { resizer: true,     width: 1 },
+        { view: "timeline",  scrollX: "scrollHor", scrollY: "scrollVer" },
+        { view: "scrollbar", id: "scrollVer" }
+      ]
+    },
+    { view: "scrollbar", id: "scrollHor", height: 20 }
+  ]
+};
+```
+
+The key points:
+- **`scrollY: "scrollVer"`** — both the grid and the timeline are bound to the same vertical scrollbar, so they scroll together.
+- **`scrollX: "scrollHor"`** — both panels share a single horizontal scrollbar at the bottom.
+- The `resizer` with `width: 1` places a 1-pixel drag handle between the grid and the timeline.
+
+## Scroll Binding
+
+Scroll IDs are arbitrary strings. Any number of views can share the same scrollbar by referencing the same `id`:
+
+```javascript
+// Grid and timeline share vertical scroll, timeline gets its own horizontal scroll
+gantt.config.layout = {
+  css: "gantt_container",
+  rows: [
+    {
+      cols: [
+        { view: "grid",      scrollY: "scrollVer" },
+        { resizer: true,     width: 1 },
+        { view: "timeline",  scrollX: "scrollHor", scrollY: "scrollVer" },
+        { view: "scrollbar", id: "scrollVer" }
+      ]
+    },
+    { view: "scrollbar", id: "scrollHor", height: 20 }
+  ]
+};
+```
+
+<Note>
+  A `scrollbar` view with `scroll: "x"` handles horizontal scrolling; `scroll: "y"` handles vertical. When the `scroll` property is omitted, Gantt infers direction from the view's aspect ratio.
+</Note>
+
+## Adding a Right-Side Grid
+
+You can place a second grid to the right of the timeline. Pass an independent `config` object with its own columns array to that view:
+
+```javascript
+var statusColumns = {
+  columns: [
+    {
+      name: "status",
+      label: "Progress",
+      width: 60,
+      align: "center",
+      template: function(task) {
+        return Math.floor((task.progress || 0) * 100) + "%";
+      }
+    },
+    {
+      name: "impact",
+      label: "Cost Impact",
+      width: 90,
+      template: function(task) {
+        return (task.duration * 1000).toLocaleString("en-US", {
+          style: "currency",
+          currency: "USD"
+        });
+      }
+    }
+  ]
+};
+
+gantt.config.layout = {
+  css: "gantt_container",
+  rows: [
+    {
+      cols: [
+        { view: "grid",      width: 320, scrollY: "scrollVer" },
+        { resizer: true,     width: 1 },
+        { view: "timeline",  scrollX: "scrollHor", scrollY: "scrollVer" },
+        { resizer: true,     width: 1 },
+        {
+          view: "grid",
+          width: 160,
+          bind: "task",
+          scrollY: "scrollVer",
+          config: statusColumns
+        },
+        { view: "scrollbar", id: "scrollVer" }
+      ]
+    },
+    { view: "scrollbar", id: "scrollHor", height: 20 }
+  ]
+};
+```
+
+## RTL (Right-to-Left) Layout
+
+For RTL languages, mirror the column order so the timeline sits on the left and the grid on the right, and set `gantt.config.rtl = true`:
+
+```javascript
+gantt.config.rtl = true;
+
+gantt.config.layout = {
+  css: "gantt_container",
+  rows: [
+    {
+      cols: [
+        { view: "scrollbar", id: "scrollVer" },
+        { view: "timeline",  scrollX: "scrollHor", scrollY: "scrollVer" },
+        { resizer: true,     width: 1 },
+        { view: "grid",      scrollX: "scrollHor", scrollY: "scrollVer" }
+      ]
+    },
+    { view: "scrollbar", id: "scrollHor", height: 20 }
+  ]
+};
+```
+
+## Scale at Bottom
+
+To place the timeline header below the task bars, wrap the timeline in a row that puts the scale underneath:
+
+```javascript
+gantt.config.layout = {
+  css: "gantt_container",
+  rows: [
+    {
+      cols: [
+        { view: "grid",     scrollY: "scrollVer" },
+        { resizer: true,    width: 1 },
+        {
+          rows: [
+            { view: "timeline", scrollX: "scrollHor", scrollY: "scrollVer" },
+            { view: "scrollbar", id: "scrollHor", height: 20 }
+          ]
+        },
+        { view: "scrollbar", id: "scrollVer" }
+      ]
+    }
+  ]
+};
+```
+
+## Simple Boolean Toggles
+
+If you only want to show or hide the entire grid or timeline panel without rewriting the layout, use these boolean properties:
+
+<ParamField path="gantt.config.show_grid" type="boolean" default="true">
+  When `false`, the left-side grid panel is hidden and the timeline expands to fill the container.
+</ParamField>
+
+<ParamField path="gantt.config.show_chart" type="boolean" default="true">
+  When `false`, the Gantt timeline (bars) panel is hidden and only the grid is shown — turning the component into a plain task list.
+</ParamField>
+
+```javascript
+// Grid-only mode
+gantt.config.show_chart = false;
+gantt.init("gantt_here");
+
+// Timeline-only mode
+gantt.config.show_grid = false;
+gantt.init("gantt_here");
+```
+
+<Tip>
+  `show_grid` / `show_chart` modify the default layout internally. If you have already set a custom `gantt.config.layout`, these flags have no effect — control visibility directly via the layout config instead.
+</Tip>
+
+## Resource Panels
+
+The layout engine also supports `"resourceGrid"` and `"resourceTimeline"` views for the resource management extension. These require the `resource_panel` plugin and follow the same scrollbar-binding pattern:
+
+```javascript
+gantt.plugins({ resource_panel: true });
+
+gantt.config.layout = {
+  css: "gantt_container",
+  rows: [
+    {
+      cols: [
+        { view: "grid",             scrollY: "scrollVer" },
+        { resizer: true,            width: 1 },
+        { view: "timeline",         scrollX: "scrollHor", scrollY: "scrollVer" },
+        { view: "scrollbar",        id: "scrollVer" }
+      ]
+    },
+    { resizer: true, width: 1 },
+    {
+      height: 150,
+      cols: [
+        { view: "resourceGrid",     scrollY: "resourceScrollVer", width: 320 },
+        { resizer: true,            width: 1 },
+        { view: "resourceTimeline", scrollX: "scrollHor", scrollY: "resourceScrollVer" },
+        { view: "scrollbar",        id: "resourceScrollVer" }
+      ]
+    },
+    { view: "scrollbar", id: "scrollHor", height: 20 }
+  ]
+};
+```

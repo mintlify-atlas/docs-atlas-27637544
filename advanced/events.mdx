@@ -1,0 +1,323 @@
+---
+title: Gantt Chart Event System and Available Events
+sidebarTitle: Events
+description: Use attachEvent, detachEvent, and callEvent to react to task, link, drag, UI, and data lifecycle events in DHTMLX Gantt chart.
+---
+
+DHTMLX Gantt ships with a rich event system that lets you hook into every stage of the chart lifecycle — from data loading and task creation through drag-and-drop and lightbox saves. You attach a handler function to a named event and receive arguments specific to that event; returning `false` from cancellable handlers aborts the operation.
+
+## Attaching and removing handlers
+
+### `gantt.attachEvent(name, handler, settings?)`
+
+Registers a callback function for the named event and returns an opaque handler ID. Store the ID if you need to remove the handler later.
+
+```js
+const handlerId = gantt.attachEvent("onAfterTaskUpdate", function(id, task) {
+  console.log("Task updated:", id, task.text);
+});
+```
+
+The optional third argument is a `HandlerSettings` object:
+
+```typescript
+interface HandlerSettings {
+  id?:         string | number; // custom handler id
+  once?:       boolean;         // remove after first call
+  thisObject?: any;             // bind `this` inside the handler
+}
+```
+
+Use `once: true` for one-shot listeners:
+
+```js
+gantt.attachEvent("onGanttReady", function() {
+  console.log("Gantt is ready");
+}, { once: true });
+```
+
+### `gantt.detachEvent(id)`
+
+Removes the handler registered under the given ID:
+
+```js
+const id = gantt.attachEvent("onAfterTaskDrag", handleDrag);
+
+// later…
+gantt.detachEvent(id);
+```
+
+### `gantt.detachAllEvents()`
+
+Removes every attached event handler in one call. Useful during teardown or when swapping datasets.
+
+### `gantt.checkEvent(name)`
+
+Returns `true` if at least one handler is registered for the event name:
+
+```js
+if (gantt.checkEvent("onBeforeTaskDelete")) {
+  console.log("Something is watching task deletions");
+}
+```
+
+## Triggering custom events
+
+### `gantt.callEvent(name, params)`
+
+Fires a named event programmatically and passes an array of arguments to all attached handlers. Returns the combined boolean result of all handlers (useful if the event is cancellable).
+
+```js
+// Define a custom event
+gantt.attachEvent("onMyCustomEvent", function(taskId, extra) {
+  console.log("Custom event fired for task", taskId, extra);
+  return true;
+});
+
+// Trigger it
+gantt.callEvent("onMyCustomEvent", [42, { source: "manual" }]);
+```
+
+You can use this pattern to build inter-component communication or to replay events in tests.
+
+## Event categories
+
+### Task lifecycle
+
+These events fire during the creation, update, and deletion of tasks.
+
+<AccordionGroup>
+  <Accordion title="onTaskCreated(task)">
+    Fires when a new task object is created (before it is added to the data store). Return `false` to cancel the creation.
+
+    ```js
+    gantt.attachEvent("onTaskCreated", function(task) {
+      task.progress = 0;          // set a default value
+      task.color = "#3aafa9";
+      return true;                // allow creation to proceed
+    });
+    ```
+  </Accordion>
+  <Accordion title="onAfterTaskAdd(id, task)">
+    Fires after a task has been added to the data store.
+
+    ```js
+    gantt.attachEvent("onAfterTaskAdd", function(id, task) {
+      console.log("Added task", id, task.text);
+    });
+    ```
+  </Accordion>
+  <Accordion title="onBeforeTaskUpdate(id, new_task)">
+    Fires before a task is updated in the data store.
+
+    ```js
+    gantt.attachEvent("onBeforeTaskUpdate", function(id, task) {
+      // Prevent reducing progress
+      return task.progress >= 0;
+    });
+    ```
+  </Accordion>
+  <Accordion title="onAfterTaskUpdate(id, task)">
+    Fires after a task has been updated in the data store.
+
+    ```js
+    gantt.attachEvent("onAfterTaskUpdate", function(id, task) {
+      syncToServer(id, task);
+    });
+    ```
+  </Accordion>
+  <Accordion title="onBeforeTaskDelete(id, task)">
+    Fires before a task is deleted. Return `false` to prevent deletion.
+
+    ```js
+    gantt.attachEvent("onBeforeTaskDelete", function(id, task) {
+      return confirm("Delete \"" + task.text + "\"?");
+    });
+    ```
+  </Accordion>
+  <Accordion title="onAfterTaskDelete(id, task)">
+    Fires after a task has been removed from the data store.
+
+    ```js
+    gantt.attachEvent("onAfterTaskDelete", function(id, task) {
+      console.log("Deleted task", id);
+    });
+    ```
+  </Accordion>
+</AccordionGroup>
+
+### Link events
+
+<AccordionGroup>
+  <Accordion title="onAfterLinkAdd(id, link)">
+    Fires after a dependency link has been added.
+
+    ```js
+    gantt.attachEvent("onAfterLinkAdd", function(id, link) {
+      console.log("Link added:", link.source, "->", link.target);
+    });
+    ```
+  </Accordion>
+  <Accordion title="onAfterLinkUpdate(id, link)">
+    Fires after a dependency link has been updated.
+  </Accordion>
+  <Accordion title="onAfterLinkDelete(id, link)">
+    Fires after a dependency link has been deleted.
+  </Accordion>
+</AccordionGroup>
+
+### Drag events
+
+<AccordionGroup>
+  <Accordion title="onBeforeTaskDrag(id, mode, e)">
+    Fires when the user starts dragging a task. The `mode` argument is one of `gantt.config.drag_mode` values (`"move"`, `"resize"`, `"progress"`). Return `false` to prevent dragging.
+
+    ```js
+    gantt.attachEvent("onBeforeTaskDrag", function(id, mode, e) {
+      var task = gantt.getTask(id);
+      if (mode === gantt.config.drag_mode.progress) {
+        gantt.message(task.text + " progress is being updated");
+      } else if (mode === gantt.config.drag_mode.move) {
+        gantt.message(task.text + " is being moved");
+      } else if (mode === gantt.config.drag_mode.resize) {
+        gantt.message(task.text + " is being resized");
+      }
+      return true;
+    });
+    ```
+  </Accordion>
+  <Accordion title="onAfterTaskDrag(id, mode, e)">
+    Fires after the user finishes dragging a task.
+
+    ```js
+    gantt.attachEvent("onAfterTaskDrag", function(id, mode, e) {
+      var task = gantt.getTask(id);
+      if (mode === gantt.config.drag_mode.progress) {
+        var pct = Math.floor(task.progress * 100 * 10) / 10;
+        gantt.message(task.text + " is now " + pct + "% completed!");
+      } else {
+        var fmt = gantt.date.date_to_str("%H:%i, %F %j");
+        gantt.message(task.text + " starts at " + fmt(task.start_date));
+      }
+    });
+    ```
+  </Accordion>
+</AccordionGroup>
+
+### UI events
+
+<AccordionGroup>
+  <Accordion title="onGanttReady()">
+    Fires once after the chart has been fully initialized and rendered. Use it to run one-time setup after `gantt.init()`.
+
+    ```js
+    gantt.attachEvent("onGanttReady", function() {
+      console.log("Gantt is ready");
+    });
+    ```
+  </Accordion>
+  <Accordion title="onLightbox(task_id)">
+    Fires after the lightbox (edit dialog) has been opened for a task.
+
+    ```js
+    gantt.attachEvent("onLightbox", function(taskId) {
+      console.log("Editing task", taskId);
+    });
+    ```
+  </Accordion>
+  <Accordion title="onLightboxSave(id, task, is_new)">
+    Fires when the user clicks **Save** in the lightbox. Return `false` to keep the lightbox open and prevent saving.
+
+    ```js
+    gantt.attachEvent("onLightboxSave", function(id, task, is_new) {
+      if (!task.text.trim()) {
+        gantt.message({ type: "error", text: "Task name is required" });
+        return false;  // block save
+      }
+      return true;
+    });
+    ```
+  </Accordion>
+  <Accordion title="onLightboxCancel(id)">
+    Fires when the user clicks **Cancel** or closes the lightbox without saving.
+  </Accordion>
+</AccordionGroup>
+
+### Data events
+
+<AccordionGroup>
+  <Accordion title="onBeforeParse()">
+    Fires before Gantt begins processing a data payload passed to `gantt.parse()`.
+
+    ```js
+    gantt.attachEvent("onBeforeParse", function() {
+      console.log("About to parse data");
+    });
+    ```
+  </Accordion>
+  <Accordion title="onParse()">
+    Fires after all data has been parsed and loaded into the data store.
+
+    ```js
+    gantt.attachEvent("onParse", function() {
+      console.log("Data loaded, task count:", gantt.getTaskCount());
+    });
+    ```
+  </Accordion>
+  <Accordion title="onDataRender()">
+    Fires after the chart has re-rendered following a data or configuration change.
+
+    ```js
+    gantt.attachEvent("onDataRender", function() {
+      console.log("Chart re-rendered");
+    });
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Real-world example: syncing updates to a REST API
+
+A common pattern is to watch `onAfterTaskUpdate` (and the equivalent add/delete events) and push changes to your backend. The example below uses the Fetch API:
+
+```js
+gantt.attachEvent("onAfterTaskAdd", function(id, task) {
+  fetch("/api/tasks", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(task)
+  }).then(function(res) {
+    return res.json();
+  }).then(function(saved) {
+    // Update the id if the server assigned a new one
+    if (saved.id && saved.id !== id) {
+      gantt.changeTaskId(id, saved.id);
+    }
+  });
+});
+
+gantt.attachEvent("onAfterTaskUpdate", function(id, task) {
+  fetch("/api/tasks/" + id, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(task)
+  });
+});
+
+gantt.attachEvent("onAfterTaskDelete", function(id, task) {
+  fetch("/api/tasks/" + id, { method: "DELETE" });
+});
+```
+
+<Tip>
+  Handlers for `onBefore*` events (such as `onBeforeTaskDelete`, `onBeforeTaskUpdate`, `onBeforeTaskDrag`, and `onLightboxSave`) can return `false` to cancel the operation entirely. No change is made to the data store, no server request is sent, and the UI reverts to its previous state. Always return `true` explicitly when you want the operation to proceed.
+</Tip>
+
+## Listening to all events
+
+`gantt.attachAll(callback)` registers a single handler that is called for every event that fires, receiving the event name as its first argument. This is handy for debugging:
+
+```js
+gantt.attachAll(function(eventName, ...args) {
+  console.log("[Gantt event]", eventName, args);
+});
+```

@@ -1,0 +1,653 @@
+---
+title: "DHTMLX Gantt Methods — Complete Public API Reference"
+sidebarTitle: "Methods"
+description: "All public gantt methods: initialization, plugins, data loading, task and link CRUD, tree navigation, zoom, export, and createDataProcessor."
+---
+
+All method signatures below are sourced directly from the Gantt source files (`datastore_tasks.js`, `datastore_links.js`, `parsing.js`, `data_processor.ts`, `timeline_zoom.ts`, `export_api/index.ts`). Methods marked as part of `gantt.ext` require the corresponding plugin to be activated via `gantt.plugins({})` before `gantt.init()`.
+
+---
+
+## Initialization
+
+### `gantt.init(container, from?, to?)`
+
+Renders the chart inside a DOM element and optionally constrains the visible date range.
+
+| Parameter | Type | Description |
+|---|---|---|
+| `container` | `string \| HTMLElement` | ID string or DOM node of the container element |
+| `from` | `Date` (optional) | Start date of the visible range |
+| `to` | `Date` (optional) | End date of the visible range |
+
+```js
+gantt.init("gantt_here");
+
+// With explicit date range
+gantt.init("gantt_here", new Date(2026, 0, 1), new Date(2026, 11, 31));
+```
+
+---
+
+### `gantt.plugins(config)`
+
+Activates optional extensions before `gantt.init()`. Must be called before initialization.
+
+| Parameter | Type | Description |
+|---|---|---|
+| `config` | `object` | Map of plugin name → `true` |
+
+```js
+gantt.plugins({
+  tooltip:             true,
+  quick_info:          true,
+  fullscreen:          true,
+  keyboard_navigation: true,
+  export_api:          true,
+});
+gantt.init("gantt_here");
+```
+
+---
+
+### `Gantt.getGanttInstance(settings?)`
+
+Creates and returns a new, independent Gantt chart instance. Accepts an optional settings object to pre-configure config, templates, events, data, plugins, locale, and calendars in one call.
+
+| Parameter | Type | Description |
+|---|---|---|
+| `settings` | `IGanttInitializationConfig` (optional) | Pre-configuration object |
+
+```js
+import { Gantt } from "dhtmlx-gantt";
+
+const chart = Gantt.getGanttInstance({
+  config: { date_format: "%Y-%m-%d" },
+  plugins: { tooltip: true }
+});
+chart.init("gantt_here");
+```
+
+---
+
+## Data loading
+
+### `gantt.parse(data, type?)`
+
+Loads task and link data from an object or JSON string. The default format is `"json"`.
+
+| Parameter | Type | Description |
+|---|---|---|
+| `data` | `object \| string` | Data object `{ data: [...], links: [...] }` or JSON string |
+| `type` | `string` (optional) | Format: `"json"` (default) or `"xml"` |
+
+```js
+gantt.parse({
+  data: [
+    { id: 1, text: "Project", type: "project", open: true },
+    { id: 2, text: "Task A", start_date: "2026-06-01", duration: 5, parent: 1 }
+  ],
+  links: [
+    { id: 1, source: 2, target: 3, type: "0" }
+  ]
+});
+```
+
+<Note>
+  The JSON data object expects a `data` array for tasks and a `links` array for dependencies. Both are optional — you can load only tasks, only links, or both.
+</Note>
+
+---
+
+### `gantt.serialize(type?)`
+
+Serializes all current tasks and links to an object. The default format is `"json"`.
+
+| Parameter | Type | Description |
+|---|---|---|
+| `type` | `string` (optional) | `"json"` (default) or `"xml"` |
+
+**Returns:** `{ data: Task[], links: Link[], baselines: Baseline[] }` for JSON format.
+
+```js
+const snapshot = gantt.serialize();
+console.log(snapshot.data);  // array of task objects
+console.log(snapshot.links); // array of link objects
+```
+
+---
+
+### `gantt.clearAll()`
+
+Removes all tasks, links, and related data from the chart and re-renders.
+
+```js
+gantt.clearAll();
+gantt.parse(freshData);
+```
+
+---
+
+## Task CRUD
+
+### `gantt.getTask(id)`
+
+Returns the task object for the given ID. Throws an assertion error if the task does not exist.
+
+| Parameter | Type | Description |
+|---|---|---|
+| `id` | `TaskID` | Task ID (number or string) |
+
+**Returns:** `ITask`
+
+```js
+const task = gantt.getTask(1);
+console.log(task.text, task.start_date);
+```
+
+---
+
+### `gantt.addTask(item, parent?, index?)`
+
+Adds a new task to the chart. Assigns a unique ID if one is not provided on the item.
+
+| Parameter | Type | Description |
+|---|---|---|
+| `item` | `ITask` | Task data object |
+| `parent` | `TaskID` (optional) | ID of the parent task. Defaults to root level. |
+| `index` | `number` (optional) | Position index within the parent branch |
+
+**Returns:** The new task's ID.
+
+```js
+const newId = gantt.addTask(
+  { text: "New task", start_date: new Date(), duration: 3 },
+  parentId,
+  0  // insert at position 0 within the parent
+);
+```
+
+---
+
+### `gantt.updateTask(id, item?)`
+
+Refreshes a task in the store and re-renders it. If `item` is omitted, the existing task object is used.
+
+| Parameter | Type | Description |
+|---|---|---|
+| `id` | `TaskID` | Task ID |
+| `item` | `ITask` (optional) | Updated task data. If omitted, re-renders the existing task. |
+
+```js
+const task = gantt.getTask(2);
+task.text = "Updated text";
+gantt.updateTask(2);
+```
+
+---
+
+### `gantt.deleteTask(id)`
+
+Removes a task (and its children if `cascade_delete` is `true`) from the chart.
+
+| Parameter | Type | Description |
+|---|---|---|
+| `id` | `TaskID` | Task ID |
+
+```js
+gantt.deleteTask(3);
+```
+
+---
+
+### `gantt.isTaskExists(id)`
+
+Returns `true` if a task with the given ID exists in the current data store.
+
+| Parameter | Type | Description |
+|---|---|---|
+| `id` | `TaskID` | Task ID |
+
+**Returns:** `boolean`
+
+```js
+if (gantt.isTaskExists(5)) {
+  const task = gantt.getTask(5);
+}
+```
+
+---
+
+### `gantt.getTaskByTime(from?, to?)`
+
+Returns all tasks whose date range overlaps the specified interval. Without arguments, returns all tasks.
+
+| Parameter | Type | Description |
+|---|---|---|
+| `from` | `Date` (optional) | Start of the filter range |
+| `to` | `Date` (optional) | End of the filter range |
+
+**Returns:** `ITask[]`
+
+```js
+const tasksThisMonth = gantt.getTaskByTime(
+  new Date(2026, 5, 1),
+  new Date(2026, 5, 30)
+);
+```
+
+---
+
+### `gantt.eachTask(callback, parent?, master?)`
+
+Iterates over all tasks (or only the children of `parent`), calling `callback` for each.
+
+| Parameter | Type | Description |
+|---|---|---|
+| `callback` | `(task: ITask) => void` | Called for each task |
+| `parent` | `TaskID` (optional) | Root of the subtree to iterate. Defaults to the chart root. |
+| `master` | `object` (optional) | `this` context inside the callback |
+
+```js
+gantt.eachTask(function(task) {
+  console.log(task.id, task.text);
+});
+
+// Iterate only children of task 1
+gantt.eachTask(function(task) {
+  task.progress = 0;
+  gantt.updateTask(task.id);
+}, 1);
+```
+
+---
+
+## Task tree navigation
+
+### `gantt.getChildren(id)`
+
+Returns an array of direct child IDs for the given task.
+
+**Returns:** `TaskID[]`
+
+```js
+const childIds = gantt.getChildren(1);
+```
+
+---
+
+### `gantt.getParent(id)`
+
+Returns the parent task ID, or the root ID if the task is at the top level.
+
+**Returns:** `TaskID`
+
+```js
+const parentId = gantt.getParent(3);
+```
+
+---
+
+### `gantt.hasChild(id)`
+
+Returns `true` if the task has at least one child.
+
+**Returns:** `boolean`
+
+```js
+if (gantt.hasChild(1)) {
+  gantt.open(1);
+}
+```
+
+---
+
+### `gantt.open(id)`
+
+Expands the branch of the given task, making its children visible.
+
+```js
+gantt.open(1);
+```
+
+---
+
+### `gantt.close(id)`
+
+Collapses the branch of the given task, hiding its children.
+
+```js
+gantt.close(1);
+```
+
+---
+
+## Link CRUD
+
+### `gantt.getLink(id)`
+
+Returns the link object for the given ID.
+
+| Parameter | Type | Description |
+|---|---|---|
+| `id` | `LinkID` | Link ID |
+
+**Returns:** `ILink`
+
+```js
+const link = gantt.getLink(1);
+console.log(link.source, link.target, link.type);
+```
+
+---
+
+### `gantt.addLink(link)`
+
+Adds a new dependency link to the chart.
+
+| Parameter | Type | Description |
+|---|---|---|
+| `link` | `ILink` | Link object with `source`, `target`, and `type` |
+
+**Returns:** The new link's ID.
+
+```js
+const linkId = gantt.addLink({
+  id:     10,
+  source: 2,
+  target: 3,
+  type:   gantt.config.links.finish_to_start  // "0"
+});
+```
+
+---
+
+### `gantt.updateLink(id, data?)`
+
+Updates a link in the store and re-renders it. If `data` is omitted, the existing link object is used.
+
+| Parameter | Type | Description |
+|---|---|---|
+| `id` | `LinkID` | Link ID |
+| `data` | `ILink` (optional) | Updated link object |
+
+```js
+const link = gantt.getLink(1);
+link.lag = 2;
+gantt.updateLink(1);
+```
+
+---
+
+### `gantt.deleteLink(id)`
+
+Removes a dependency link from the chart.
+
+```js
+gantt.deleteLink(1);
+```
+
+---
+
+### `gantt.isLinkExists(id)`
+
+Returns `true` if a link with the given ID exists.
+
+**Returns:** `boolean`
+
+---
+
+### `gantt.getLinks()`
+
+Returns an array of all link objects currently in the chart.
+
+**Returns:** `ILink[]`
+
+```js
+const allLinks = gantt.getLinks();
+```
+
+---
+
+## DataProcessor
+
+### `gantt.createDataProcessor(config)`
+
+Creates and attaches a DataProcessor instance that automatically syncs task and link changes to a backend URL.
+
+| Parameter | Type | Description |
+|---|---|---|
+| `config` | `object` | Configuration with `url`, optional `mode`, `router`, `batchUpdate`, `deleteAfterConfirmation`, and `headers` |
+
+**Returns:** `DataProcessor`
+
+<Tabs>
+  <Tab title="REST-JSON (default)">
+    ```js
+    const dp = gantt.createDataProcessor({
+      url:  "/api/gantt",
+      mode: "REST-JSON"   // default; sends PUT /api/gantt/:id, POST /api/gantt, DELETE /api/gantt/:id
+    });
+    ```
+  </Tab>
+  <Tab title="Custom router">
+    ```js
+    const dp = gantt.createDataProcessor({
+      task: {
+        create: (data)     => fetch("/api/tasks",       { method: "POST",   body: JSON.stringify(data) }),
+        update: (data, id) => fetch(`/api/tasks/${id}`, { method: "PUT",    body: JSON.stringify(data) }),
+        delete: (id)       => fetch(`/api/tasks/${id}`, { method: "DELETE" })
+      },
+      link: {
+        create: (data)     => fetch("/api/links",       { method: "POST",   body: JSON.stringify(data) }),
+        update: (data, id) => fetch(`/api/links/${id}`, { method: "PUT",    body: JSON.stringify(data) }),
+        delete: (id)       => fetch(`/api/links/${id}`, { method: "DELETE" })
+      }
+    });
+    ```
+  </Tab>
+  <Tab title="Function router">
+    ```js
+    const dp = gantt.createDataProcessor(function(entity, action, data, id) {
+      // entity: "task" | "link"
+      // action: "create" | "update" | "delete"
+      return fetch(`/api/${entity}s${action !== "create" ? "/" + id : ""}`, {
+        method: action === "create" ? "POST" : action === "delete" ? "DELETE" : "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: action !== "delete" ? JSON.stringify(data) : undefined
+      });
+    });
+    ```
+  </Tab>
+</Tabs>
+
+Available `mode` values: `"REST-JSON"` (default), `"REST"`, `"JSON"`, `"POST"`, `"GET"`.
+
+---
+
+## Zoom (`gantt.ext.zoom`)
+
+The zoom extension is always present on `gantt.ext.zoom`. It does not require a plugin activation.
+
+### `gantt.ext.zoom.init(config?)`
+
+Initializes the zoom extension with the given configuration. Call this after `gantt.init()`.
+
+| Parameter | Type | Description |
+|---|---|---|
+| `config` | `ITimelineZoomConfig` (optional) | Zoom configuration |
+
+```js
+gantt.ext.zoom.init({
+  levels: [
+    { name: "hour",  scales: [{ unit: "day",  step: 1, date: "%d %M" }, { unit: "hour", step: 1, date: "%H:%i" }] },
+    { name: "day",   scales: [{ unit: "day",  step: 1, date: "%d %M" }] },
+    { name: "week",  scales: [{ unit: "month",step: 1, date: "%F %Y" }, { unit: "week", step: 1, date: "Week %W" }] },
+    { name: "month", scales: [{ unit: "year", step: 1, date: "%Y" },    { unit: "month",step: 1, date: "%M" }] }
+  ],
+  activeLevelIndex: 1,
+  trigger: "wheel",
+  useKey:  "ctrlKey"
+});
+```
+
+---
+
+### `gantt.ext.zoom.zoomToFit(options?)`
+
+Automatically selects the zoom level that best fits all tasks (or a specific subset) into the visible viewport.
+
+| Parameter | Type | Description |
+|---|---|---|
+| `options.scope` | `"all" \| "visible"` | Which tasks to consider. Default: `"all"` |
+| `options.taskId` | `string \| number` | Fit only the branch rooted at this task |
+| `options.range` | `{ start_date, end_date }` | Fit to an explicit date range |
+| `options.padding` | `number` | Extra columns of padding on each side |
+| `options.minLevel` | `number \| string` | Minimum zoom level to use |
+| `options.maxLevel` | `number \| string` | Maximum zoom level to use |
+
+**Returns:** `boolean` — `true` if a level was applied, `false` if no suitable level was found.
+
+```js
+gantt.ext.zoom.zoomToFit();                         // fit all tasks
+gantt.ext.zoom.zoomToFit({ scope: "visible" });     // fit only visible tasks
+gantt.ext.zoom.zoomToFit({ taskId: 5 });            // fit branch under task 5
+```
+
+---
+
+### `gantt.ext.zoom.resetZoom()`
+
+Restores the zoom level that was active before the last call to `zoomToFit()`.
+
+**Returns:** `boolean` — `true` if state was restored, `false` if no saved state exists.
+
+```js
+gantt.ext.zoom.resetZoom();
+```
+
+---
+
+### `gantt.ext.zoom.setLevel(level)`
+
+Sets the active zoom level by index or by name string.
+
+```js
+gantt.ext.zoom.setLevel("week");
+gantt.ext.zoom.setLevel(2);
+```
+
+---
+
+### `gantt.ext.zoom.getCurrentLevel()`
+
+Returns the index of the currently active zoom level.
+
+**Returns:** `number`
+
+---
+
+### `gantt.ext.zoom.zoomIn()` / `gantt.ext.zoom.zoomOut()`
+
+Moves the zoom level one step finer or coarser.
+
+```js
+document.getElementById("zoom-in").onclick  = () => gantt.ext.zoom.zoomIn();
+document.getElementById("zoom-out").onclick = () => gantt.ext.zoom.zoomOut();
+```
+
+---
+
+## Export (`gantt.ext.export_api`)
+
+Requires `gantt.plugins({ export_api: true })` before `gantt.init()`. All export methods POST data to the DHTMLX hosted export service at `https://export.dhtmlx.com/gantt`.
+
+### `gantt.ext.export_api.exportToPDF(config?)`
+
+Exports the chart as a PDF file.
+
+```js
+gantt.ext.export_api.exportToPDF({
+  name:  "project-plan.pdf",
+  raw:   false,  // true = use the HTML snapshot instead of structured data
+  callback: function(info) { console.log("Export URL:", info.url); }
+});
+```
+
+---
+
+### `gantt.ext.export_api.exportToPNG(config?)`
+
+Exports the chart as a PNG image. Accepts the same config object as `exportToPDF`.
+
+```js
+gantt.ext.export_api.exportToPNG({ name: "gantt.png" });
+```
+
+---
+
+### `gantt.ext.export_api.exportToExcel(config?)`
+
+Exports task data as an Excel (`.xlsx`) file.
+
+```js
+gantt.ext.export_api.exportToExcel({
+  name:   "tasks.xlsx",
+  visual: true,     // include task bar colours
+  start:  "2026-01-01",
+  end:    "2026-12-31"
+});
+```
+
+---
+
+### `gantt.ext.export_api.exportToICal(config?)`
+
+Exports tasks as an iCalendar (`.ics`) file.
+
+```js
+gantt.ext.export_api.exportToICal({ name: "project.ics" });
+```
+
+---
+
+### `gantt.ext.export_api.exportToMSProject(config?)`
+
+Exports the chart as an MS Project XML (`.xml`) file. Circular dependency links are skipped by default.
+
+```js
+gantt.ext.export_api.exportToMSProject({
+  name:                  "project.xml",
+  skip_circular_links:   true
+});
+```
+
+---
+
+### `gantt.ext.export_api.importFromExcel(config)`
+
+Imports task data from an Excel file via the export service.
+
+```js
+gantt.ext.export_api.importFromExcel({
+  data:     fileInputElement.files[0],
+  callback: function(result) { gantt.parse({ data: result }); }
+});
+```
+
+---
+
+### `gantt.ext.export_api.importFromMSProject(config)`
+
+Imports from an MS Project XML file.
+
+```js
+gantt.ext.export_api.importFromMSProject({
+  data:     fileInputElement.files[0],
+  callback: function(result) { gantt.parse(result); }
+});
+```
+
+<Note>
+  `gantt.exportToPDF`, `gantt.exportToPNG`, `gantt.exportToExcel`, `gantt.exportToICal`, and `gantt.exportToMSProject` are convenience aliases added directly onto the gantt object and call the same underlying `gantt.ext.export_api` methods.
+</Note>

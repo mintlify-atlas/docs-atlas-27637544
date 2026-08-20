@@ -1,0 +1,146 @@
+---
+title: Smart Rendering and Performance for Large Datasets
+sidebarTitle: Smart Rendering
+description: Enable smart rendering, static backgrounds, and branch loading in DHTMLX Gantt to render large project datasets efficiently with minimal DOM overhead.
+---
+
+Rendering thousands of tasks and timeline columns as real DOM nodes is expensive — it inflates memory usage, slows layout recalculations, and makes scrolling sluggish. DHTMLX Gantt addresses this with **smart rendering**: only the rows and columns that are currently within the visible viewport are created as DOM elements. As the user scrolls, off-screen nodes are recycled and repopulated, keeping the live DOM small regardless of dataset size.
+
+Smart rendering is **enabled by default** in version 10 and applies to both the grid panel and the timeline panel.
+
+## Enabling and disabling smart rendering
+
+Smart rendering is controlled by a single config property:
+
+```js
+// enabled by default — no action needed
+gantt.config.smart_rendering = true;
+
+// disable if you need the full DOM (e.g. for PDF export or custom measurements)
+gantt.config.smart_rendering = false;
+```
+
+When smart rendering is disabled, every task row and every timeline column is rendered regardless of scroll position. This is occasionally needed for server-side PDF export (which the built-in export API handles automatically by temporarily setting `smart_rendering = false`).
+
+## Static background rendering
+
+For an additional performance boost on very large timelines, use the `static_background` mode. Instead of rendering individual `<div>` elements for each timeline cell, Gantt draws the background as a single CSS gradient or canvas element. This eliminates the cell-per-column DOM nodes entirely.
+
+```js
+// Render the timeline background as a single element instead of per-cell divs
+gantt.config.static_background = true;
+
+// When true (default when static_background is on), custom-colored cells
+// still get their own elements so colors are applied correctly.
+// Set to false to skip individual cell elements entirely for maximum speed.
+gantt.config.static_background_cells = true;
+```
+
+Default values from the source:
+
+```js
+gantt.config.static_background       = false; // off by default
+gantt.config.static_background_cells = true;  // on by default when static_background is enabled
+```
+
+<Tabs>
+  <Tab title="Standard rendering">
+    ```js
+    // Each timeline cell is a separate DOM node — fine for small datasets
+    gantt.config.smart_rendering  = true;
+    gantt.config.static_background = false;
+
+    gantt.init("gantt_here");
+    ```
+  </Tab>
+  <Tab title="Static background">
+    ```js
+    // Single-element background — best for large datasets or dense timescales
+    gantt.config.smart_rendering  = true;
+    gantt.config.static_background = true;
+
+    gantt.init("gantt_here");
+    ```
+  </Tab>
+</Tabs>
+
+## Dynamic branch loading
+
+`branch_loading` enables **on-demand loading** of task subtrees. When the feature is active, child tasks for a given parent are not included in the initial dataset — instead, Gantt sends a server request the first time the user expands that parent. This dramatically reduces the initial payload for deeply hierarchical project structures.
+
+```js
+gantt.config.branch_loading = true;
+
+// The property name on a task object that signals "this node has unloaded children"
+// Default is "$has_child"; rename if your backend uses a different field.
+gantt.config.branch_loading_property = "$has_child";
+```
+
+Mark tasks that have unloaded children in your initial dataset:
+
+```json
+{
+  "data": [
+    {
+      "id": 1,
+      "text": "Phase 1",
+      "start_date": "2024-06-01",
+      "duration": 30,
+      "$has_child": true
+    }
+  ]
+}
+```
+
+When the user clicks the expand arrow on task 1, Gantt fires a load request to the server with the parent ID so you can return only that branch's children.
+
+<Note>
+  `branch_loading` is a **PRO edition** feature. It is listed in the config type definitions but requires the commercial DHTMLX Gantt PRO licence to function. The Community (MIT) edition does not execute the dynamic load request.
+</Note>
+
+## Performance guidance
+
+Smart rendering provides the most benefit when:
+
+- The dataset contains **more than a few hundred tasks** — below that threshold the full DOM is small enough that rendering all rows has negligible cost.
+- The timeline spans **many columns** (e.g. day-scale over several years). Each visible column is a DOM node; smart rendering limits these to the visible range.
+- The page hosts **multiple Gantt instances** — each instance benefits independently.
+
+Recommended approaches by dataset size:
+
+<CardGroup cols={2}>
+  <Card title="< 500 tasks" icon="chart-gantt">
+    Default configuration (`smart_rendering = true`) is sufficient. No extra tuning needed.
+  </Card>
+  <Card title="500 – 5 000 tasks" icon="gauge-high">
+    Keep smart rendering enabled. Consider switching to a coarser timescale (week or month) to reduce column count.
+  </Card>
+  <Card title="5 000 – 50 000 tasks" icon="bolt">
+    Enable `static_background = true` to remove per-cell DOM nodes from the timeline. Combine with `branch_loading` (PRO) for hierarchical data.
+  </Card>
+  <Card title="> 50 000 tasks" icon="server">
+    Use server-side pagination or `branch_loading` (PRO) to cap the loaded task count. Smart rendering alone cannot offset the cost of processing tens of thousands of objects in memory.
+  </Card>
+</CardGroup>
+
+## Configuration summary
+
+<ResponseField name="gantt.config.smart_rendering" type="boolean" default="true">
+  Enables viewport-based rendering. Only rows and columns inside the visible scroll area are present in the DOM. Rows outside the viewport are removed and re-created as the user scrolls.
+</ResponseField>
+
+<ResponseField name="gantt.config.static_background" type="boolean" default="false">
+  Replaces per-cell background `<div>` elements in the timeline with a single painted background element. Reduces DOM size significantly for wide timescales.
+</ResponseField>
+
+<ResponseField name="gantt.config.static_background_cells" type="boolean" default="true">
+  When `static_background` is enabled, controls whether cells with custom styling still receive individual DOM elements. Set to `false` for maximum speed at the cost of losing per-cell color customization.
+</ResponseField>
+
+<ResponseField name="gantt.config.branch_loading" type="boolean" default="false">
+  Enables dynamic loading of task subtrees on first expand. Requires the PRO edition and a server endpoint that accepts a parent task ID and returns the corresponding children.
+</ResponseField>
+
+<ResponseField name="gantt.config.branch_loading_property" type="string" default='"$has_child"'>
+  The name of the task property that tells Gantt a task has unloaded children. The backend must set this property to `true` on any parent whose children have not been sent in the initial response.
+</ResponseField>

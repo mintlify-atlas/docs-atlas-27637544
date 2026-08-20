@@ -1,0 +1,171 @@
+---
+title: "Building DHTMLX Gantt from Source Code"
+sidebarTitle: "Build from Source"
+description: "Clone the DHTMLX Gantt repository, install dependencies, run the Vite build, use the dev server with hot-reload, and run the smoke test and linter."
+---
+
+Unlike a compiled-only distribution, the DHTMLX Gantt Community Edition ships its full TypeScript and JavaScript sources alongside LESS stylesheets, so you can read, modify, and rebuild the entire library. This page walks through cloning the repository, understanding its layout, building the output files, and running the development server and test suite.
+
+## Repository Layout
+
+Before you start, it helps to understand how the repository is organised.
+
+| Directory | Contents |
+|:----------|:---------|
+| `src/` | Library sources — TypeScript, JavaScript, and LESS styles |
+| `samples/` | Runnable demo HTML files (`npm run start`, then open `/samples/`) |
+| `scripts/` | Build, dev server, and test runner scripts |
+| `codebase/` | **Build output — generated, not committed to git** |
+
+<Note>
+  The `codebase/` directory is generated output and is not committed to the repository. It does not exist in a fresh clone. Run `npm run build` (or `npm run start`) to create it. After the build, you can serve the files from `codebase/` directly via `<script>` tags, exactly as the published npm package does.
+</Note>
+
+## Build Workflow
+
+<Steps>
+  <Step title="Clone the repository">
+    Clone the official GitHub repository and change into the project directory.
+
+    ```bash
+    git clone https://github.com/DHTMLX/gantt.git
+    cd gantt
+    ```
+  </Step>
+
+  <Step title="Install dependencies">
+    Install all development dependencies declared in `package.json`. The build toolchain uses Vite, TypeScript, LESS, and ESLint.
+
+    ```bash
+    npm install
+    ```
+  </Step>
+
+  <Step title="Build the library">
+    Run the production build. This compiles the TypeScript and JavaScript sources with Vite and runs a post-build script to finalise the output.
+
+    ```bash
+    npm run build
+    ```
+
+    After a successful build, the `codebase/` directory contains:
+
+    | Output file | Description |
+    |:------------|:------------|
+    | `codebase/dhtmlxgantt.js` | UMD bundle (CommonJS + global `gantt`) |
+    | `codebase/dhtmlxgantt.es.js` | ES module build |
+    | `codebase/dhtmlxgantt.css` | Compiled stylesheet |
+    | `codebase/dhtmlxgantt.d.ts` | TypeScript type definitions |
+  </Step>
+
+  <Step title="Start the development server">
+    For iterative development, use the watch-and-serve mode. This runs three concurrent processes: a Vite watch build that rebuilds on source changes, an Express static file server for the samples, and a Vite dev server.
+
+    ```bash
+    npm run start
+    ```
+
+    The samples gallery becomes available at `http://localhost:5173`. Open any file under `/samples/` to preview it in the browser with live reload.
+  </Step>
+
+  <Step title="Run the test suite">
+    The test command is a smoke pass: it builds the library first, then loads every sample file headlessly using Puppeteer and fails if any page throws a JavaScript error or logs a `console.error`.
+
+    ```bash
+    npm run test
+    ```
+
+    You can also target a single samples folder to speed up the feedback loop:
+
+    ```bash
+    npm run test 05_lightbox
+    ```
+
+    In CI environments where the build is already a separate step, skip the redundant rebuild with `--no-build`:
+
+    ```bash
+    npm run test -- --no-build
+    ```
+  </Step>
+
+  <Step title="Run the linter">
+    ESLint is configured over the `src/` directory. Run it to check for code style issues before committing changes.
+
+    ```bash
+    npm run lint
+    ```
+  </Step>
+</Steps>
+
+## Available Scripts
+
+All scripts are defined in `package.json` under the `"scripts"` key:
+
+| Script | Command | What it does |
+|:-------|:--------|:-------------|
+| `build` | `vite build && node scripts/postbuild.js` | Production build — outputs to `codebase/` |
+| `watch` | `vite build --watch` | Rebuilds on every source file change |
+| `start` | `concurrently "npm:watch" "node scripts/server.js" "vite"` | Watch build + samples server + Vite dev server |
+| `server` | `node scripts/server.js` | Static Express server for samples only |
+| `test` | `node scripts/test.js` | Smoke test: build then load every sample headlessly |
+| `lint` | `eslint src` | ESLint over the `src/` directory |
+
+## Working with the Source
+
+The library source lives entirely in `src/`, written in a combination of TypeScript and JavaScript with LESS stylesheets. A few orientation points:
+
+<AccordionGroup>
+  <Accordion title="TypeScript type definitions (src/types.d.ts)">
+    The primary public-facing types — `ITask`, `ILink`, `IGanttFactory`, `IGanttInitializationConfig`, `ICalendarConfig`, and the `LinkType` / `ConstraintTypes` enums — are declared in `src/types.d.ts`. This is the right place to look when adding or verifying type signatures.
+  </Accordion>
+
+  <Accordion title="Configuration properties (src/core/common/config.ts)">
+    All Gantt configuration property types and their default values are centralised in `src/core/common/config.ts`. Changes to config property types should be made here.
+  </Accordion>
+
+  <Accordion title="Plugins and extensions (src/ext/)">
+    Optional features such as export, tooltip, keyboard navigation, and zoom are implemented as extensions in `src/ext/`. The master plugin registry is in `src/ext/extensions.ts`.
+  </Accordion>
+
+  <Accordion title="Samples (samples/)">
+    Every file under `samples/` is a self-contained HTML demo that runs against the built `codebase/` output. Adding a new sample and running `npm run test` is the fastest way to verify a feature end-to-end.
+  </Accordion>
+</AccordionGroup>
+
+## Using Your Local Build
+
+After running `npm run build`, you can use the locally built files exactly like the published npm package. Point your imports at the local `codebase/` output:
+
+```js
+// In a local project that links to your cloned repo
+import { gantt } from "./gantt/codebase/dhtmlxgantt.es.js";
+import "./gantt/codebase/dhtmlxgantt.css";
+```
+
+Or reference them from plain HTML:
+
+```html
+<script src="./gantt/codebase/dhtmlxgantt.js"></script>
+<link rel="stylesheet" href="./gantt/codebase/dhtmlxgantt.css">
+```
+
+<Tip>
+  Use `npm link` to point a local project at your development build of the library without copying files manually. Run `npm link` inside the `gantt/` clone, then `npm link dhtmlx-gantt` in your consuming project.
+</Tip>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Installation" icon="download" href="/installation">
+    Install the published package via npm, CDN, or script tag.
+  </Card>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Render your first Gantt chart with tasks and links.
+  </Card>
+  <Card title="GitHub Repository" icon="github" href="https://github.com/DHTMLX/gantt">
+    Browse the source, open issues, and submit pull requests.
+  </Card>
+  <Card title="Live Samples" icon="play" href="https://docs.dhtmlx.com/gantt/samples/">
+    Interactive examples for every built-in feature.
+  </Card>
+</CardGroup>

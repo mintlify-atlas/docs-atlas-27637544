@@ -1,0 +1,233 @@
+---
+title: "Integrating DHTMLX Gantt with React, Angular, Vue, Svelte"
+sidebarTitle: "Frameworks"
+description: "Embed DHTMLX Gantt in React, Angular, Vue 3, and Svelte using wrapper component patterns with lifecycle hooks for init, cleanup, and data updates."
+---
+
+DHTMLX Gantt is a DOM-based library that manages its own rendering inside a container element. Integrating it with a component framework means bridging that imperative DOM API with the framework's declarative component model. The standard approach is a thin wrapper component that holds a ref to a container `<div>`, calls `gantt.init()` in the mount lifecycle hook, and calls `gantt.clearAll()` before cleanup.
+
+The Community Edition integrates via these wrapper patterns. The PRO edition additionally provides official ready-made components (`ReactGantt`, `VueGantt`, `AngularGantt`) that handle lifecycle management for you.
+
+## Core Wrapper Pattern
+
+Every framework integration follows the same three steps:
+
+<Steps>
+  <Step title="Create a container element">
+    Render a `<div>` (or equivalent) that Gantt will own. Give it an explicit size — Gantt needs a non-zero height to render.
+  </Step>
+  <Step title="Initialize in the mount hook">
+    After the component mounts and the container element is in the DOM, call `gantt.init(container)` and `gantt.parse(data)`.
+  </Step>
+  <Step title="Clean up on unmount">
+    Call `gantt.clearAll()` before the component is removed from the DOM. If you created a DataProcessor, destroy it here too.
+  </Step>
+</Steps>
+
+## React
+
+Use `useRef` to get a reference to the container element and `useEffect` to run initialization and cleanup:
+
+```jsx
+import React, { useEffect, useRef } from "react";
+import { gantt } from "dhtmlx-gantt";
+import "dhtmlx-gantt/codebase/dhtmlxgantt.css";
+
+export default function GanttChart({ tasks, links }) {
+  const containerRef = useRef(null);
+
+  useEffect(() => {
+    gantt.config.date_format = "%Y-%m-%d";
+
+    gantt.init(containerRef.current);
+
+    gantt.parse({ data: tasks, links: links });
+
+    // Cleanup when the component unmounts
+    return () => {
+      gantt.clearAll();
+    };
+  }, []); // Run once on mount
+
+  // Re-parse when data props change
+  useEffect(() => {
+    gantt.clearAll();
+    gantt.parse({ data: tasks, links: links });
+  }, [tasks, links]);
+
+  return (
+    <div
+      ref={containerRef}
+      style={{ width: "100%", height: "600px" }}
+    />
+  );
+}
+```
+
+<Note>
+  In React Strict Mode (development), `useEffect` runs twice. This causes `gantt.init()` to be called twice on the same container. Guard against this by checking `gantt.$container` before re-initializing, or by moving the initialization to a ref-based flag.
+</Note>
+
+### Multiple instances
+
+If you render several `GanttChart` components on the same page, use the `Gantt` factory to create independent instances:
+
+```jsx
+import { Gantt } from "dhtmlx-gantt";
+
+export default function GanttChart({ tasks, links }) {
+  const containerRef = useRef(null);
+  const ganttRef = useRef(null);
+
+  useEffect(() => {
+    ganttRef.current = Gantt.getGanttInstance();
+    ganttRef.current.config.date_format = "%Y-%m-%d";
+    ganttRef.current.init(containerRef.current);
+    ganttRef.current.parse({ data: tasks, links: links });
+
+    return () => {
+      ganttRef.current.clearAll();
+      ganttRef.current = null;
+    };
+  }, []);
+
+  return <div ref={containerRef} style={{ width: "100%", height: "600px" }} />;
+}
+```
+
+## Vue 3
+
+Use the Composition API with `ref` for the container element and `onMounted` / `onUnmounted` hooks for lifecycle management:
+
+```vue
+<template>
+  <div ref="ganttContainer" style="width: 100%; height: 600px;" />
+</template>
+
+<script setup>
+import { ref, onMounted, onUnmounted, watch } from "vue";
+import { gantt } from "dhtmlx-gantt";
+import "dhtmlx-gantt/codebase/dhtmlxgantt.css";
+
+const props = defineProps({
+  tasks: Array,
+  links: Array
+});
+
+const ganttContainer = ref(null);
+
+onMounted(() => {
+  gantt.config.date_format = "%Y-%m-%d";
+  gantt.init(ganttContainer.value);
+  gantt.parse({ data: props.tasks, links: props.links });
+});
+
+onUnmounted(() => {
+  gantt.clearAll();
+});
+
+watch(
+  () => [props.tasks, props.links],
+  ([newTasks, newLinks]) => {
+    gantt.clearAll();
+    gantt.parse({ data: newTasks, links: newLinks });
+  }
+);
+</script>
+```
+
+## Angular
+
+Use `ViewChild` with `ElementRef` for the container and implement `AfterViewInit` and `OnDestroy`:
+
+```typescript
+import {
+  Component, ViewChild, ElementRef,
+  AfterViewInit, OnDestroy, Input
+} from "@angular/core";
+import { gantt } from "dhtmlx-gantt";
+
+@Component({
+  selector: "app-gantt",
+  template: `<div #ganttContainer style="width:100%;height:600px;"></div>`
+})
+export class GanttComponent implements AfterViewInit, OnDestroy {
+  @ViewChild("ganttContainer") ganttContainer!: ElementRef;
+
+  @Input() tasks: any[] = [];
+  @Input() links: any[] = [];
+
+  ngAfterViewInit(): void {
+    gantt.config.date_format = "%Y-%m-%d";
+    gantt.init(this.ganttContainer.nativeElement);
+    gantt.parse({ data: this.tasks, links: this.links });
+  }
+
+  ngOnDestroy(): void {
+    gantt.clearAll();
+  }
+}
+```
+
+Remember to import `GanttComponent` in your Angular module and add `"dhtmlx-gantt/codebase/dhtmlxgantt.css"` to the `styles` array in `angular.json`.
+
+## Svelte
+
+Use `bind:this` to get the container element reference and `onMount` / `onDestroy` from `svelte`:
+
+```svelte
+<script>
+  import { onMount, onDestroy } from "svelte";
+  import { gantt } from "dhtmlx-gantt";
+  import "dhtmlx-gantt/codebase/dhtmlxgantt.css";
+
+  export let tasks = [];
+  export let links = [];
+
+  let ganttContainer;
+
+  onMount(() => {
+    gantt.config.date_format = "%Y-%m-%d";
+    gantt.init(ganttContainer);
+    gantt.parse({ data: tasks, links: links });
+  });
+
+  onDestroy(() => {
+    gantt.clearAll();
+  });
+
+  $: if (ganttContainer) {
+    gantt.clearAll();
+    gantt.parse({ data: tasks, links: links });
+  }
+</script>
+
+<div bind:this={ganttContainer} style="width: 100%; height: 600px;" />
+```
+
+## PRO Edition Components
+
+The DHTMLX Gantt PRO edition ships first-party wrapper components that handle all lifecycle management, TypeScript types, and event binding internally:
+
+- `ReactGantt` — drop-in React component
+- `VueGantt` — drop-in Vue 3 component
+- `AngularGantt` — Angular module with `<dhx-gantt>` element
+
+These components are not part of the Community Edition (`dhtmlx-gantt` npm package).
+
+## Official Integration Guides
+
+<CardGroup cols={2}>
+  <Card title="React" icon="react" href="https://docs.dhtmlx.com/gantt/integrations/react/js-gantt-react/">
+    Full walkthrough with DataProcessor and TypeScript.
+  </Card>
+  <Card title="Angular" icon="angular" href="https://docs.dhtmlx.com/gantt/integrations/angular/js-gantt-angular/">
+    Angular module setup, zone.js, and change detection tips.
+  </Card>
+  <Card title="Vue.js" icon="vuejs" href="https://docs.dhtmlx.com/gantt/integrations/vue/js-gantt-vue/">
+    Vue 3 Composition API and Options API examples.
+  </Card>
+  <Card title="Svelte" icon="code" href="https://docs.dhtmlx.com/gantt/integrations/svelte/howtostart-svelte/">
+    SvelteKit and Svelte 4 integration patterns.
+  </Card>
+</CardGroup>

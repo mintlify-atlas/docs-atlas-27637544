@@ -1,0 +1,175 @@
+---
+title: Running Multiple Gantt Instances on One Page
+sidebarTitle: Multiple Instances
+description: Learn how to create independent DHTMLX Gantt instances using Gantt.getGanttInstance(), configure each with its own data, plugins, and locale.
+---
+
+DHTMLX Gantt supports multiple independent chart instances on the same page. Each instance has its own data store, configuration, templates, and event handlers, so two Gantt charts can coexist without sharing state. This is useful for dashboards, comparison views, or embedding several project timelines side-by-side.
+
+## The Gantt factory
+
+The global `Gantt` object (capital G) is a **factory** that implements the `IGanttFactory` interface. It exposes a single method:
+
+```typescript
+interface IGanttFactory {
+  plugin(plugin: GanttPlugin): void;
+  getGanttInstance(settings?: IGanttInitializationConfig): any;
+}
+```
+
+Call `Gantt.getGanttInstance()` to create a new, fully isolated Gantt instance. The default `gantt` export (lowercase) is itself created this way during library initialization:
+
+```typescript
+// from src/dhtmlxgantt.ts
+const Gantt = new GanttFactory(factoryMethod, extensions);
+const gantt = Gantt.getGanttInstance(); // the default singleton
+```
+
+Importing `gantt` from `dhtmlx-gantt` gives you this singleton. The `Gantt` factory is also exported for creating additional instances.
+
+## Creating two independent charts
+
+Place two container elements in your HTML, then initialize each instance separately:
+
+```html
+<div id="gantt_here"  class="gantt-container"></div>
+<div id="gantt_here2" class="gantt-container"></div>
+```
+
+```js
+import { gantt, Gantt } from "dhtmlx-gantt";
+import "dhtmlx-gantt/codebase/dhtmlxgantt.css";
+
+// First instance – the default singleton
+gantt.init("gantt_here");
+gantt.parse({
+  data: [
+    { id: 1, text: "Project #1", start_date: "01-04-2023", duration: 18, progress: 0.4, open: true },
+    { id: 2, text: "Task #1",    start_date: "02-04-2023", duration: 8,  progress: 0.6, parent: 1 },
+    { id: 3, text: "Task #2",    start_date: "11-04-2023", duration: 8,  progress: 0.6, parent: 1 }
+  ],
+  links: [{ id: 1, source: 1, target: 2, type: "1" }]
+});
+
+// Second instance – a new independent chart
+const gantt2 = Gantt.getGanttInstance();
+gantt2.init("gantt_here2");
+gantt2.parse({
+  data: [
+    { id: 1, text: "Project #2", start_date: "01-04-2023", duration: 18, progress: 0.4, open: true },
+    { id: 3, text: "Task #3",    start_date: "02-04-2023", duration: 1,  progress: 0.6, parent: 1 },
+    { id: 4, text: "Task #4",    start_date: "03-04-2023", duration: 1,  progress: 0.6, parent: 1 }
+  ],
+  links: [{ id: 3, source: 3, target: 4, type: "0" }]
+});
+```
+
+`gantt` and `gantt2` share no state. Changing `gantt2.config.date_format` does not affect the first instance, and deleting a task from `gantt2` has no effect on `gantt`.
+
+## Initializing via the settings object
+
+`getGanttInstance()` accepts an optional `IGanttInitializationConfig` object that lets you configure the instance declaratively before `init()` is called internally. Every property is optional.
+
+```typescript
+interface IGanttInitializationConfig {
+  container?: string | HTMLElement; // mounts and calls init() automatically
+  config?:    any;                  // merged into gantt.config
+  calendars?: ICalendarConfig[];    // registered via gantt.addCalendar()
+  templates?: any;                  // merged into gantt.templates after onTemplatesReady
+  events?:    any;                  // attached via gantt.attachEvent()
+  data?:      any;                  // parsed or loaded immediately after init
+  plugins?:   any;                  // plugins activated before init
+  locale?:    any;                  // applied via gantt.i18n.setLocale()
+}
+```
+
+The following example creates an instance with all settings applied at construction time:
+
+```js
+const gantt2 = Gantt.getGanttInstance({
+  container: "gantt_here2",          // init() called for you
+  config: {
+    date_format: "%Y-%m-%d",
+    duration_unit: "hour"
+  },
+  plugins: {
+    keyboard_navigation: true
+  },
+  locale: "de",                      // German labels
+  events: {
+    onAfterTaskUpdate(id, task) {
+      console.log("Task updated:", id, task);
+    }
+  },
+  data: {
+    tasks: [
+      { id: 1, text: "Sprint 1", start_date: "2024-06-01", duration: 5 }
+    ],
+    links: []
+  }
+});
+```
+
+### Settings reference
+
+<AccordionGroup>
+  <Accordion title="container">
+    A CSS selector string or an `HTMLElement`. When provided, `getGanttInstance()` calls `gantt.init(container)` automatically after applying all other settings. If omitted, call `gantt.init()` manually.
+  </Accordion>
+  <Accordion title="config">
+    A plain object whose properties are shallow-merged into `gantt.config`. Any property supported by the configuration API is valid here.
+  </Accordion>
+  <Accordion title="calendars">
+    An array of `ICalendarConfig` objects. Each entry is registered by calling `gantt.addCalendar(entry)` before the chart is initialized.
+  </Accordion>
+  <Accordion title="templates">
+    A plain object of template functions. Applied after the `onTemplatesReady` event fires, so all built-in templates are available for override.
+  </Accordion>
+  <Accordion title="events">
+    An object whose keys are event names and values are handler functions. Equivalent to calling `gantt.attachEvent(key, value)` for each entry.
+  </Accordion>
+  <Accordion title="data">
+    Inline data passed to `gantt.parse()`, or a URL string passed to `gantt.load()`. Applied after the chart is initialized.
+  </Accordion>
+  <Accordion title="plugins">
+    An object of `{ pluginName: true }` pairs, equivalent to calling `gantt.plugins({ pluginName: true })`.
+  </Accordion>
+  <Accordion title="locale">
+    A locale identifier string (e.g. `"de"`, `"fr"`) or a full locale object. Applied via `gantt.i18n.setLocale()`.
+  </Accordion>
+</AccordionGroup>
+
+## Destroying an instance
+
+Call `gantt.destructor()` to unmount a Gantt instance, remove all DOM elements it created, and free internal resources. This is important in single-page applications where components are created and destroyed dynamically.
+
+```js
+// Create on demand
+let instance = Gantt.getGanttInstance({
+  container: "gantt_here",
+  data: { tasks: [...], links: [...] }
+});
+
+// Destroy later
+instance.destructor();
+instance = null;
+```
+
+<Note>
+  When multiple instances share the same page, CSS class names from `dhtmlxgantt.css` apply globally. If you need visually distinct themes per instance, scope the stylesheet or override variables inside each container's selector. For example, use `#gantt_here2 .gantt_task_line { background: #3498db; }` to style only the second chart's task bars without affecting the first.
+</Note>
+
+## Per-instance plugins
+
+Each instance activates plugins independently. Calling `gantt.plugins()` on the second instance does not activate those plugins on the first:
+
+```js
+const gantt1 = Gantt.getGanttInstance();
+gantt1.plugins({ keyboard_navigation: true });
+gantt1.init("gantt1");
+
+const gantt2 = Gantt.getGanttInstance();
+// keyboard_navigation is NOT active on gantt2 unless explicitly enabled
+gantt2.plugins({ keyboard_navigation: true });
+gantt2.init("gantt2");
+```

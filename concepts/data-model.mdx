@@ -1,0 +1,240 @@
+---
+title: "DHTMLX Gantt Data Model: Tasks, Links & JSON Format"
+sidebarTitle: "Data Model"
+description: "Learn the JSON format gantt.parse() accepts, every ITask and ILink field, date parsing options, and a complete working example with projects and milestones."
+---
+
+DHTMLX Gantt is driven by plain JavaScript objects. All task and dependency data lives in two flat arrays — `data` (tasks) and `links` (dependencies) — which you hand to `gantt.parse()`. Understanding the shape of those objects is the foundation of everything else you build on top of the library.
+
+## Top-level structure
+
+`gantt.parse()` accepts a single object with two optional keys:
+
+```js
+gantt.parse({
+  data:  [ /* ITask objects */ ],
+  links: [ /* ILink objects */ ]
+});
+```
+
+Both arrays are optional. You can call `parse()` with tasks only, links only, or an empty object to clear the chart. Repeated calls completely replace the current dataset.
+
+## The `ITask` interface
+
+Each element of the `data` array is a task object. The fields recognised by Gantt are listed below; any additional properties you add are preserved on the object and accessible via `gantt.getTask(id)`.
+
+<ParamField body="id" type="number | string" required>
+  Unique task identifier. Must be unique across the entire dataset. Gantt uses this value to resolve parent–child relationships and dependency links.
+</ParamField>
+
+<ParamField body="text" type="string">
+  Label displayed inside the task bar and in the default grid "Task" column.
+</ParamField>
+
+<ParamField body="start_date" type="Date | string">
+  Bar start position. Can be a JavaScript `Date` object or a formatted string. When a string is supplied, Gantt parses it using `gantt.config.date_format` (default `"%d-%m-%Y %H:%i"`). Set `date_format` before calling `parse()` to match your string format.
+</ParamField>
+
+<ParamField body="end_date" type="Date | string">
+  Bar end position. Either `end_date` or `duration` (not both) needs to be provided; Gantt calculates the missing one automatically.
+</ParamField>
+
+<ParamField body="duration" type="number">
+  Task length expressed in `gantt.config.duration_unit` units (default `"day"`). Calculated from `start_date` + `end_date` when omitted.
+</ParamField>
+
+<ParamField body="progress" type="number">
+  Completion ratio between `0` (not started) and `1` (fully complete). Renders as a filled overlay inside the bar when `gantt.config.show_progress` is `true` (the default).
+</ParamField>
+
+<ParamField body="parent" type="number | string">
+  `id` of the parent task. Omit or set to `0` (the root id) for top-level tasks. Gantt uses this to build the tree structure shown in the grid.
+</ParamField>
+
+<ParamField body="type" type='"task" | "project" | "milestone"'>
+  Rendering type. Defaults to `"task"`. See [Task Types](/concepts/task-types) for a detailed breakdown of each value.
+</ParamField>
+
+<ParamField body="open" type="boolean">
+  Whether the task's children are expanded in the tree. Defaults to `false` (collapsed). Set to `true` on project-type tasks to show child tasks on load.
+</ParamField>
+
+<ParamField body="constraint_type" type="ConstraintTypes">
+  Scheduling constraint type (PRO edition). Values: `"asap"`, `"alap"`, `"snet"`, `"snlt"`, `"fnet"`, `"fnlt"`, `"mso"`, `"mfo"`.
+</ParamField>
+
+<ParamField body="constraint_date" type="Date">
+  The date associated with the constraint above (PRO edition).
+</ParamField>
+
+<ParamField body="auto_scheduling" type="boolean">
+  When `false`, excludes this individual task from auto-scheduling recalculations (PRO edition).
+</ParamField>
+
+### Internal `$`-prefixed fields
+
+Gantt adds several computed fields to every task object at parse time. These are read-only from application code:
+
+| Field | Type | Description |
+|---|---|---|
+| `$source` | `any[]` | Links where this task is the source |
+| `$target` | `any[]` | Links where this task is the target |
+| `$level` | `number` | Nesting depth (0 = root) |
+| `$index` | `number` | Position in the current visible order |
+| `$open` | `boolean` | Resolved open/collapsed state |
+| `$rendered_type` | `TaskType` | Effective rendered type after `auto_types` resolution |
+| `$rendered_parent` | `TaskID` | Effective parent id used for rendering |
+
+<Warning>
+  Never write to `$`-prefixed fields directly. They are recomputed on every render cycle and your changes will be silently overwritten.
+</Warning>
+
+## The `ILink` interface
+
+Each element of the `links` array defines a dependency between two tasks.
+
+<ParamField body="id" type="number | string" required>
+  Unique link identifier.
+</ParamField>
+
+<ParamField body="source" type="number | string" required>
+  `id` of the predecessor task (the task the arrow starts from).
+</ParamField>
+
+<ParamField body="target" type="number | string" required>
+  `id` of the successor task (the task the arrow points to).
+</ParamField>
+
+<ParamField body="type" type='"0" | "1" | "2" | "3"' required>
+  Dependency type. Numeric string values map to the four standard dependency types:
+  - `"0"` — Finish-to-Start (default)
+  - `"1"` — Start-to-Start
+  - `"2"` — Finish-to-Finish
+  - `"3"` — Start-to-Finish
+
+  See [Dependencies](/concepts/dependencies) for a complete explanation.
+</ParamField>
+
+<ParamField body="lag" type="number">
+  Lag (or lead) time expressed in `gantt.config.duration_unit` units. A positive value adds a delay between tasks; a negative value creates overlap. Defaults to `0`.
+</ParamField>
+
+## Date string format
+
+`start_date` and `end_date` can be plain JavaScript `Date` objects or formatted strings. When strings are used, set `gantt.config.date_format` **before** calling `gantt.init()` or `gantt.parse()` so Gantt knows how to parse them.
+
+```js
+// Tell Gantt to parse "2026-06-01" style strings
+gantt.config.date_format = "%Y-%m-%d";
+
+gantt.init("gantt_here");
+gantt.parse({ data: [
+  { id: 1, text: "Task A", start_date: "2026-06-01", duration: 5 }
+]});
+```
+
+Common format tokens: `%Y` (4-digit year), `%m` (month 01–12), `%d` (day 01–31), `%H` (hour 00–23), `%i` (minutes 00–59).
+
+<Note>
+  The default `date_format` is `"%d-%m-%Y %H:%i"`. If your dates look like `"2026-06-01"` and you forget to change `date_format`, tasks will appear with incorrect dates or not render at all.
+</Note>
+
+## Complete JSON example
+
+The example below shows a realistic dataset combining a project (summary) task, regular tasks, a milestone, and three finish-to-start links.
+
+```js
+gantt.config.date_format = "%Y-%m-%d";
+
+gantt.init("gantt_here");
+
+gantt.parse({
+  data: [
+    // Project / summary task — groups child tasks
+    {
+      id: 1,
+      text: "Website Redesign",
+      type: "project",
+      open: true,
+      progress: 0.35
+    },
+
+    // Regular tasks — children of task 1
+    {
+      id: 2,
+      text: "Research & Discovery",
+      start_date: "2026-06-01",
+      duration: 5,
+      parent: 1,
+      progress: 1.0
+    },
+    {
+      id: 3,
+      text: "Wireframes",
+      start_date: "2026-06-08",
+      duration: 6,
+      parent: 1,
+      progress: 0.6
+    },
+    {
+      id: 4,
+      text: "Visual Design",
+      start_date: "2026-06-15",
+      duration: 8,
+      parent: 1,
+      progress: 0.1
+    },
+
+    // Milestone — zero-duration diamond marker
+    {
+      id: 5,
+      text: "Design Sign-off",
+      start_date: "2026-06-23",
+      type: "milestone",
+      parent: 1
+    }
+  ],
+
+  links: [
+    // Research → Wireframes (finish-to-start)
+    { id: 1, source: 2, target: 3, type: "0" },
+    // Wireframes → Visual Design (finish-to-start)
+    { id: 2, source: 3, target: 4, type: "0" },
+    // Visual Design → Milestone (finish-to-start)
+    { id: 3, source: 4, target: 5, type: "0" }
+  ]
+});
+```
+
+## Programmatic task access
+
+After parsing, retrieve and manipulate tasks and links through the Gantt API:
+
+```js
+// Read
+const task = gantt.getTask(2);
+console.log(task.text); // "Research & Discovery"
+
+const link = gantt.getLink(1);
+console.log(link.type); // "0"
+
+// Update a task
+task.progress = 0.8;
+gantt.updateTask(task.id);
+
+// Add a new task at runtime
+gantt.addTask({
+  id: 6,
+  text: "SEO Audit",
+  start_date: "2026-06-24",
+  duration: 3,
+  parent: 1
+});
+
+// Remove a task (and its child tasks if cascade_delete is true)
+gantt.deleteTask(6);
+```
+
+<Tip>
+  Set `gantt.config.deepcopy_on_parse = true` if you want Gantt to store a deep copy of each task object instead of the original reference. This prevents external mutations from silently affecting the internal data store.
+</Tip>

@@ -1,0 +1,211 @@
+---
+title: "Activating and Configuring DHTMLX Gantt Plugins"
+sidebarTitle: "Plugins"
+description: "Activate and configure DHTMLX Gantt optional plugins: tooltip, quick_info, fullscreen, keyboard_navigation, drag_timeline, click_drag, and export_api."
+---
+
+DHTMLX Gantt ships a set of optional extensions that are bundled with the library but inactive by default. You activate them by calling `gantt.plugins()` with an object whose keys are plugin names and whose values are `true`. The plugins call must happen before `gantt.init()`.
+
+```js
+gantt.plugins({
+  tooltip:             true,
+  quick_info:          true,
+  fullscreen:          true,
+  keyboard_navigation: true,
+  drag_timeline:       true,
+  click_drag:          true
+});
+
+gantt.init("gantt_here");
+```
+
+<Note>
+  `gantt.plugins()` must be called **before** `gantt.init()`. Activating a plugin after the chart has been initialized has no effect.
+</Note>
+
+## Available Plugins
+
+### `tooltip`
+
+Displays a floating tooltip when the user hovers over a task bar. The tooltip content is controlled by the `gantt.templates.tooltip_text` template.
+
+**Activate:**
+
+```js
+gantt.plugins({ tooltip: true });
+```
+
+**Customize the tooltip content:**
+
+```js
+gantt.templates.tooltip_text = function (start, end, task) {
+  return (
+    "<b>" + task.text + "</b><br/>" +
+    "Start: " + gantt.templates.tooltip_date_format(start) + "<br/>" +
+    "End:   " + gantt.templates.tooltip_date_format(end)
+  );
+};
+```
+
+The `tooltip_date_format` template controls how dates are formatted inside tooltips. Its default pattern is `"%Y-%m-%d"`.
+
+After the chart is initialized you can configure the tooltip viewport:
+
+```js
+gantt.attachEvent("onGanttReady", function () {
+  var tooltips = gantt.ext.tooltips;
+  tooltips.tooltip.setViewport(gantt.$task_data);
+});
+```
+
+---
+
+### `quick_info`
+
+Shows a compact popup panel with task details when a task bar is clicked or tapped. Designed for touch-friendly environments where hover tooltips are not practical.
+
+**Activate:**
+
+```js
+gantt.plugins({ quick_info: true });
+```
+
+The popup content uses the same `tooltip_text` template as the `tooltip` plugin.
+
+---
+
+### `fullscreen`
+
+Adds a fullscreen toggle to the chart. The entire Gantt container expands to fill the browser viewport.
+
+**Activate:**
+
+```js
+gantt.plugins({ fullscreen: true });
+```
+
+**Programmatic control:**
+
+```js
+gantt.ext.fullscreen.toggle(); // enter or exit fullscreen
+gantt.ext.fullscreen.expand(); // enter fullscreen
+gantt.ext.fullscreen.collapse(); // exit fullscreen
+```
+
+You can trigger fullscreen from a button in your own UI:
+
+```js
+document.getElementById("fullscreen-btn").addEventListener("click", function () {
+  gantt.ext.fullscreen.toggle();
+});
+```
+
+---
+
+### `keyboard_navigation`
+
+Enables arrow-key navigation through task rows and keyboard shortcuts for common actions.
+
+**Activate:**
+
+```js
+gantt.plugins({ keyboard_navigation: true });
+```
+
+Once active, users can move focus with the arrow keys, open the lightbox with Enter, and delete the selected task with Delete/Backspace (subject to event handlers).
+
+---
+
+### `drag_timeline`
+
+Lets users scroll the timeline by clicking and dragging on the timeline area, similar to a map pan gesture.
+
+**Activate:**
+
+```js
+gantt.plugins({ drag_timeline: true });
+```
+
+By default, dragging is enabled on the timeline background. Task bars are not affected — drag-to-move task behavior is independent.
+
+---
+
+### `click_drag`
+
+Lets users create new tasks by clicking and dragging across empty rows in the timeline. The drag gesture defines the start and end dates; a callback receives the selection.
+
+**Activate and configure:**
+
+```js
+gantt.plugins({ click_drag: true });
+
+gantt.config.click_drag = {
+  callback: onDragEnd,
+  singleRow: true   // constrain drag to one row at a time
+};
+
+gantt.init("gantt_here");
+
+function onDragEnd(startPoint, endPoint, startDate, endDate, tasksBetweenDates, tasksInRow) {
+  if (tasksInRow.length === 1) {
+    var parent = tasksInRow[0];
+    gantt.createTask({
+      text:       "Subtask of " + parent.text,
+      start_date: gantt.roundDate(startDate),
+      end_date:   gantt.roundDate(endDate)
+    }, parent.id);
+  } else if (tasksInRow.length === 0) {
+    gantt.createTask({
+      text:       "New task",
+      start_date: gantt.roundDate(startDate),
+      end_date:   gantt.roundDate(endDate)
+    });
+  }
+}
+```
+
+The `callback` receives:
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `startPoint` | `{x, y}` | Pixel coordinates of drag start |
+| `endPoint` | `{x, y}` | Pixel coordinates of drag end |
+| `startDate` | `Date` | Date at the drag start column |
+| `endDate` | `Date` | Date at the drag end column |
+| `tasksBetweenDates` | `ITask[]` | Tasks whose bars overlap the dragged range |
+| `tasksInRow` | `ITask[]` | Tasks in the row(s) covered by the drag |
+
+---
+
+### `export_api`
+
+Provides methods to export the chart to PDF, PNG, Excel, iCal, and MS Project via the DHTMLX online export service. See the [Export guide](/guides/export) for full documentation.
+
+**Activate:**
+
+```js
+gantt.plugins({ export_api: true });
+```
+
+## Using Multiple Plugins Together
+
+All plugins can be combined in a single `gantt.plugins()` call:
+
+```js
+gantt.plugins({
+  tooltip:             true,
+  quick_info:          true,
+  fullscreen:          true,
+  keyboard_navigation: true,
+  drag_timeline:       true,
+  click_drag:          true,
+  export_api:          true
+});
+
+// Customize tooltip after activation
+gantt.templates.tooltip_text = function (start, end, task) {
+  return "<b>" + task.text + "</b><br/>Duration: " + task.duration + " days";
+};
+
+gantt.init("gantt_here");
+```

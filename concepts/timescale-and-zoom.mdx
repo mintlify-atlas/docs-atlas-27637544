@@ -1,0 +1,326 @@
+---
+title: "DHTMLX Gantt Timescale Configuration and Zoom Extension"
+sidebarTitle: "Timescale & Zoom"
+description: "Configure single and dual-row Gantt timescales using gantt.config.scales, all TimeUnit values, and the gantt.ext.zoom API for programmatic and mouse-wheel zoom."
+---
+
+The timescale is the horizontal header of the Gantt chart. It shows time units as columns and determines how wide each day, week, or month appears on the chart. DHTMLX Gantt lets you render a single-row scale or stack multiple rows (for example, months above days), and the built-in `gantt.ext.zoom` extension lets you switch between scale configurations at runtime — including through mouse-wheel interaction.
+
+## `gantt.config.scales`
+
+The `scales` config property is an array of `Scale` objects. Each element adds one row to the timescale header, from top to bottom. The last element in the array sets the finest granularity that determines column widths.
+
+```ts
+// Scale interface (from scale_types.ts)
+interface Scale {
+  unit?:         ScaleUnit;                      // time unit — default "day"
+  step?:         number;                         // columns per unit — default 1
+  format?:       string | ((date: Date) => any); // label format
+  template?:     string | ((date: Date) => any); // alias for format
+  date?:         string | ((date: Date) => any); // fallback label format
+  css?:          string | ((date: Date) => any); // per-cell CSS class
+  sticky?:       boolean;                        // keep label visible while cell is wider than viewport
+  column_width?: number | null;                  // fixed px width per cell (bottom scale only)
+}
+```
+
+### Available `TimeUnit` values
+
+```ts
+type TimeUnit = "minute" | "hour" | "day" | "week" | "quarter" | "month" | "year";
+```
+
+The time units in ascending order of size:
+
+| Value | Typical use |
+|---|---|
+| `"minute"` | Short-term operational schedules |
+| `"hour"` | Intra-day scheduling |
+| `"day"` | Default — everyday project schedules |
+| `"week"` | Medium-term plans |
+| `"month"` | High-level roadmaps |
+| `"quarter"` | Quarterly planning |
+| `"year"` | Multi-year programmes |
+
+### Single-scale configuration
+
+A single entry renders one header row. This is the default configuration (`unit: "day"`, `step: 1`):
+
+```js
+gantt.config.scales = [
+  { unit: "day", step: 1, format: "%d %M" }
+];
+```
+
+Using a format function instead of a string pattern gives full control over the cell label:
+
+```js
+gantt.config.scales = [
+  {
+    unit: "day",
+    step: 1,
+    format: function(date) {
+      const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+      return dayNames[date.getDay()] + " " + date.getDate();
+    },
+    css: function(date) {
+      // Highlight weekends
+      if (date.getDay() === 0 || date.getDay() === 6) return "weekend";
+      return "";
+    }
+  }
+];
+```
+
+### Dual-scale configuration
+
+Stack two (or more) scale rows by adding multiple entries to the array. The first entry is the top row (coarser), the last entry is the bottom row (finest granularity):
+
+```js
+// Months on top, days below
+gantt.config.scales = [
+  { unit: "month", step: 1, format: "%F, %Y" },
+  { unit: "day",   step: 1, format: "%j, %D" }
+];
+```
+
+```js
+// Years → Months → Weeks — a three-row scale
+gantt.config.scales = [
+  { unit: "year",  step: 1, format: "%Y"      },
+  { unit: "month", step: 1, format: "%M"      },
+  { unit: "week",  step: 1, format: "Week %W" }
+];
+```
+
+<Note>
+  `gantt.config.scale_height` controls the pixel height of each scale row. When you have two rows, set it to roughly twice the single-row height (e.g., `scale_height: 50`) for comfortable readability.
+</Note>
+
+After changing `scales` at runtime, call `gantt.render()` to apply the new configuration:
+
+```js
+// Switch from daily to weekly view
+gantt.config.scales = [
+  { unit: "month", step: 1, format: "%F %Y"    },
+  { unit: "week",  step: 1, format: "Week %W"  }
+];
+gantt.render();
+```
+
+## The `gantt.ext.zoom` extension
+
+The zoom extension manages a stack of named scale configurations called *zoom levels*. It provides methods to step between levels, fit all tasks into the current viewport, and reset the scale to its pre-fit state.
+
+The extension is built into the library and available immediately as `gantt.ext.zoom` — no `gantt.plugins()` call is required.
+
+### `ITimelineZoomConfig` interface
+
+```ts
+interface ITimelineZoomConfig {
+  levels?:          IZoomLevel[];       // array of zoom level definitions
+  activeLevelIndex?: number;            // starting level index (default 0)
+  startDate?:       Date;               // optional fixed scale start date
+  endDate?:         Date;               // optional fixed scale end date
+  widthStep?:       number;             // column width increment per wheel tick
+  minColumnWidth?:  number;             // minimum column width in px (default 60)
+  maxColumnWidth?:  number;             // maximum column width in px (default 240)
+  useKey?:          "ctrlKey" | "altKey" | "shiftKey"; // modifier required for wheel zoom
+  trigger?:         "wheel" | null;     // "wheel" enables mouse-wheel zoom
+  element?:         Element | (() => Element); // DOM element to attach the wheel listener to
+  fit?:             IZoomToFitConfig;   // options for zoomToFit()
+  handler?:         (e: Event) => {};   // custom wheel event handler
+}
+
+interface IZoomLevel {
+  name?:             string;    // level name — usable with setLevel("name")
+  scales:            Scale[];   // the gantt.config.scales value for this level
+  scale_height?:     number;    // scale header height for this level
+  min_column_width?: number;    // minimum column width for this level
+}
+```
+
+### `gantt.ext.zoom.init(config)`
+
+Initialise the zoom extension with your levels array. Call this before `gantt.init()`:
+
+```js
+gantt.ext.zoom.init({
+  levels: [
+    {
+      name: "year",
+      scale_height: 50,
+      scales: [
+        { unit: "year",  step: 1, format: "%Y" }
+      ]
+    },
+    {
+      name: "month",
+      scale_height: 50,
+      scales: [
+        { unit: "year",  step: 1, format: "%Y"  },
+        { unit: "month", step: 1, format: "%M"  }
+      ]
+    },
+    {
+      name: "week",
+      scale_height: 70,
+      scales: [
+        { unit: "month", step: 1, format: "%F %Y"   },
+        { unit: "week",  step: 1, format: "Week %W" }
+      ]
+    },
+    {
+      name: "day",
+      scale_height: 70,
+      scales: [
+        { unit: "month", step: 1, format: "%F %Y" },
+        { unit: "day",   step: 1, format: "%d %M" }
+      ]
+    },
+    {
+      name: "hour",
+      scale_height: 70,
+      scales: [
+        { unit: "day",  step: 1, format: "%d %M" },
+        { unit: "hour", step: 1, format: "%H:%i" }
+      ]
+    }
+  ],
+  activeLevelIndex: 2  // start at "week"
+});
+
+gantt.init("gantt_here");
+```
+
+### Navigating between levels
+
+```js
+// Step in (finer granularity)
+gantt.ext.zoom.zoomIn();
+
+// Step out (coarser granularity)
+gantt.ext.zoom.zoomOut();
+
+// Jump to a specific level by index or name
+gantt.ext.zoom.setLevel("month");
+gantt.ext.zoom.setLevel(0);
+
+// Get the current level index
+const currentIndex = gantt.ext.zoom.getCurrentLevel();
+
+// Get all level definitions
+const allLevels = gantt.ext.zoom.getLevels();
+```
+
+Wire zoom controls to UI buttons:
+
+```js
+document.getElementById("btn-zoom-in").addEventListener("click", function() {
+  gantt.ext.zoom.zoomIn();
+});
+document.getElementById("btn-zoom-out").addEventListener("click", function() {
+  gantt.ext.zoom.zoomOut();
+});
+```
+
+### `gantt.ext.zoom.zoomToFit()`
+
+Automatically selects the zoom level that makes all loaded tasks (or a specified subset) visible within the current timeline viewport:
+
+```js
+// Fit all tasks
+gantt.ext.zoom.zoomToFit();
+
+// Fit only the visible (non-collapsed) tasks
+gantt.ext.zoom.zoomToFit({ scope: "visible" });
+
+// Fit a specific task's subtree
+gantt.ext.zoom.zoomToFit({ taskId: 1 });
+
+// Fit a specific date range
+gantt.ext.zoom.zoomToFit({
+  range: {
+    start_date: new Date(2026, 5, 1),
+    end_date:   new Date(2026, 8, 30)
+  }
+});
+```
+
+### `gantt.ext.zoom.resetZoom()`
+
+Restores the scale configuration that was active before the most recent `zoomToFit()` call:
+
+```js
+gantt.ext.zoom.resetZoom();
+```
+
+`resetZoom()` returns `false` if no saved state exists (i.e., `zoomToFit()` has not been called since the last manual `setLevel()` call).
+
+### Listening for zoom changes
+
+The zoom extension fires an `onAfterZoom` event each time the active level changes:
+
+```js
+gantt.ext.zoom.attachEvent("onAfterZoom", function(level, config) {
+  console.log("Zoomed to level index:", level);
+  console.log("Active scale config:", config);
+});
+```
+
+## Mouse-wheel zoom
+
+<Tip>
+  Set `trigger: "wheel"` and `useKey: "ctrlKey"` to enable zooming with Ctrl + mouse wheel. This is the most common pattern because the unmodified mouse wheel is reserved for vertical scrolling. The `element` option scopes the listener to the timeline area only so it does not interfere with page scrolling outside the chart.
+</Tip>
+
+```js
+gantt.ext.zoom.init({
+  minColumnWidth: 80,
+  maxColumnWidth: 150,
+  levels: [
+    [
+      { unit: "month", format: "%M %Y", step: 1 },
+      { unit: "week",  step: 1, format: function(date) {
+          var dateToStr = gantt.date.date_to_str("%d %M");
+          var endDate   = gantt.date.add(date, 7 - date.getDay(), "day");
+          var weekNum   = gantt.date.date_to_str("%W")(date);
+          return "Week #" + weekNum + ", " + dateToStr(date) + " – " + dateToStr(endDate);
+      }}
+    ],
+    [
+      { unit: "month", format: "%M %Y", step: 1 },
+      { unit: "day",   format: "%d %M", step: 1 }
+    ],
+    [
+      { unit: "day",  format: "%d %M", step: 1  },
+      { unit: "hour", format: "%H:%i", step: 1  }
+    ]
+  ],
+  startDate: new Date(2026, 0, 1),
+  endDate:   new Date(2026, 11, 31),
+  useKey:    "ctrlKey",   // require Ctrl key for wheel zoom
+  trigger:   "wheel",     // activate the wheel listener
+  element: function() {
+    // Scope the listener to the timeline panel only
+    return gantt.$root.querySelector(".gantt_task");
+  }
+});
+
+gantt.init("gantt_here");
+gantt.parse(tasks);
+```
+
+The `widthStep` option controls how much the column width changes per wheel tick before the extension steps to the next level. When `widthStep` is omitted, each wheel tick jumps directly to the next level without intermediate column-width interpolation.
+
+## Default zoom levels
+
+When `gantt.ext.zoom.init()` is called without a `levels` array, it falls back to five built-in levels:
+
+| Level name | Scales |
+|---|---|
+| `"hour"` | Day → Hour |
+| `"day"` | Day only |
+| `"week"` | Month → Week |
+| `"month"` | Year → Month |
+| `"year"` | Year only |

@@ -1,0 +1,285 @@
+---
+title: "Configuring the Lightbox Task Editor in DHTMLX Gantt"
+sidebarTitle: "Lightbox Editor"
+description: "Configure the lightbox modal editor in DHTMLX Gantt: built-in section types, custom sections, lightbox events, and adding extra buttons."
+---
+
+The lightbox is DHTMLX Gantt's built-in modal dialog for editing task properties. It opens when a user double-clicks a task bar (controlled by `gantt.config.details_on_dblclick`) or when a new task is created (controlled by `gantt.config.details_on_create`). The dialog contains one or more input sections, each mapped to a field on the task object, plus Save and Cancel buttons.
+
+## Configuring Sections
+
+The list of input sections is defined in `gantt.config.lightbox.sections` — an array of section-descriptor objects. Each descriptor must include at minimum:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `name` | `string` | Internal key; also used to look up the section label via `gantt.locale.labels["section_" + name]` |
+| `map_to` | `string` | Task property this section reads from and writes to. Use `"auto"` for time/duration controls |
+| `type` | `SectionType` | Control type (see below) |
+| `height` | `number` | Control height in pixels (optional) |
+| `focus` | `boolean` | Whether to focus this section when the lightbox opens (optional) |
+
+<Note>
+  Section configuration must be set **before** `gantt.init()` is called, or before the first lightbox opens. Calling `gantt.resetLightbox()` forces the lightbox to be rebuilt from the current configuration.
+</Note>
+
+## Built-In Section Types
+
+### `textarea`
+
+A multi-line text input mapped to any string property on the task:
+
+```js
+{ name: "description", height: 38, map_to: "text", type: "textarea", focus: true }
+```
+
+Set `gantt.locale.labels.section_description = "Description"` to control the label.
+
+### `time`
+
+A start/end date picker. Always set `map_to: "auto"` so the control manages both `start_date` and `end_date`:
+
+```js
+{
+  name: "time",
+  type: "time",
+  map_to: "auto",
+  time_format: ["%d", "%m", "%Y", "%H:%i"]
+}
+```
+
+### `duration`
+
+Shows start date, end date, and duration as a trio of fields. Set `map_to: "auto"`:
+
+```js
+{ name: "time", type: "duration", map_to: "auto" }
+```
+
+### `select`
+
+A dropdown mapped to any task property. Provide an `options` array of `{ key, label }` objects or a named server list:
+
+```js
+{
+  name: "priority",
+  map_to: "priority",
+  type: "select",
+  options: [
+    { key: 1, label: "High" },
+    { key: 2, label: "Normal" },
+    { key: 3, label: "Low" }
+  ]
+}
+```
+
+### `typeselect`
+
+A dropdown for switching the task type (task / project / milestone). The options are derived from `gantt.config.types` automatically:
+
+```js
+{ name: "type", type: "typeselect", map_to: "type" }
+```
+
+An optional `filter` function can restrict which types appear:
+
+```js
+{
+  name: "type",
+  type: "typeselect",
+  map_to: "type",
+  filter: function (typeName) {
+    return typeName !== gantt.config.types.placeholder;
+  }
+}
+```
+
+### `parent`
+
+A dropdown for re-parenting the task. Lists all tasks in the chart. Supports `allow_root`, `root_label`, `sort`, and `filter` options:
+
+```js
+{
+  name: "parent",
+  type: "parent",
+  map_to: "parent",
+  allow_root: true,
+  root_label: "No parent"
+}
+```
+
+### `template`
+
+Renders a read-only HTML snippet inside the lightbox, useful for displaying computed values or additional context:
+
+```js
+{
+  name: "info",
+  type: "template",
+  map_to: "description",
+  height: 16
+}
+```
+
+### `checkbox`
+
+A single boolean checkbox:
+
+```js
+{ name: "approved", type: "checkbox", map_to: "approved", height: 22 }
+```
+
+### `radio`
+
+A group of radio buttons. Provide an `options` array identical in structure to `select`:
+
+```js
+{
+  name: "status",
+  type: "radio",
+  map_to: "status",
+  options: [
+    { key: "open",     label: "Open" },
+    { key: "active",   label: "Active" },
+    { key: "closed",   label: "Closed" }
+  ]
+}
+```
+
+## Full Custom Lightbox Example
+
+The example below adds a text area, a priority dropdown, and a combined time/duration control:
+
+```js
+// Register server list for reuse across the chart
+gantt.serverList("priorityOptions", [
+  { key: "1", label: "High" },
+  { key: "2", label: "Normal" },
+  { key: "3", label: "Low" }
+]);
+
+// Section labels are resolved via gantt.locale.labels
+gantt.locale.labels.section_description = "Description";
+gantt.locale.labels.section_priority    = "Priority";
+gantt.locale.labels.section_time        = "Time period";
+
+gantt.config.lightbox.sections = [
+  {
+    name:   "description",
+    height: 38,
+    map_to: "text",
+    type:   "textarea",
+    focus:  true
+  },
+  {
+    name:    "priority",
+    map_to:  "priority",
+    type:    "select",
+    options: gantt.serverList("priorityOptions")
+  },
+  {
+    name:    "time",
+    type:    "time",
+    map_to:  "auto",
+    time_format: ["%d", "%m", "%Y", "%H:%i"]
+  }
+];
+
+gantt.init("gantt_here");
+```
+
+## Separate Sections per Task Type
+
+You can define different sections for projects and milestones by populating `project_sections` and `milestone_sections`:
+
+```js
+gantt.config.lightbox.sections = [
+  { name: "description", height: 38, map_to: "text", type: "textarea", focus: true },
+  { name: "time", type: "duration", map_to: "auto" }
+];
+
+gantt.config.lightbox.project_sections = [
+  { name: "description", height: 38, map_to: "text", type: "textarea", focus: true },
+  { name: "time", type: "duration", map_to: "auto" }
+];
+
+gantt.config.lightbox.milestone_sections = [
+  { name: "description", height: 38, map_to: "text", type: "textarea", focus: true },
+  { name: "time", type: "time", single_date: true, map_to: "auto" }
+];
+```
+
+## Lightbox Events
+
+<Accordion title="onBeforeLightbox — prevent opening">
+  Fires before the lightbox is displayed. Return `false` to cancel opening.
+
+  ```js
+  gantt.attachEvent("onBeforeLightbox", function (id) {
+    var task = gantt.getTask(id);
+    if (task.readonly) return false; // prevent edit
+    return true;
+  });
+  ```
+</Accordion>
+
+<Accordion title="onLightbox — after lightbox opens">
+  Fires after the lightbox is displayed and populated.
+
+  ```js
+  gantt.attachEvent("onLightbox", function (id) {
+    console.log("Editing task", id);
+  });
+  ```
+</Accordion>
+
+<Accordion title="onLightboxSave — before save">
+  Fires when the user clicks Save. The `task` argument contains the edited values. Return `false` to cancel saving.
+
+  ```js
+  gantt.attachEvent("onLightboxSave", function (id, task, isNew) {
+    if (!task.text) {
+      gantt.message({ type: "error", text: "Task name is required" });
+      return false;
+    }
+    return true;
+  });
+  ```
+</Accordion>
+
+<Accordion title="onLightboxCancel — on cancel">
+  Fires when the user clicks Cancel or closes the dialog.
+
+  ```js
+  gantt.attachEvent("onLightboxCancel", function (id, isNew) {
+    console.log("Cancelled editing task", id);
+  });
+  ```
+</Accordion>
+
+## Adding a Custom Button
+
+Add an extra button to the lightbox footer by pushing its ID to `gantt.config.buttons_left` or `gantt.config.buttons_right`, and handling the click with the `onLightboxButton` event:
+
+```js
+// Register the button label
+gantt.locale.labels["complete_button"] = "Mark Complete";
+
+// Add the button to the left side of the footer
+gantt.config.buttons_left = ["dhx_save_btn", "dhx_cancel_btn", "complete_button"];
+
+gantt.init("gantt_here");
+
+// Handle the click
+gantt.attachEvent("onLightboxButton", function (button_id, node, event) {
+  if (button_id === "complete_button") {
+    var id = gantt.getState().lightbox;
+    gantt.getTask(id).progress = 1;
+    gantt.updateTask(id);
+    gantt.hideLightbox();
+  }
+});
+```
+
+<Tip>
+  Style your custom button using the selector `.dhx_btn_set.complete_button_set { background: ...; }`. The class name is derived from the button ID with `_set` appended.
+</Tip>

@@ -1,0 +1,411 @@
+---
+title: "gantt.templates — Rendering and Customization Functions"
+sidebarTitle: "Templates"
+description: "Complete reference for gantt.templates: every function signature, what it renders, when to override it, and concrete examples with XSS guidance."
+---
+
+`gantt.templates` is an object of functions that control what the chart renders for every visual element — task bar text, CSS classes, tooltip content, scale labels, grid values, and more. Override any function to customize the output without touching the library internals.
+
+Templates are initialized after `gantt.init()` calls. The recommended place to override them is inside an `onTemplatesReady` event handler, or directly before `gantt.init()`.
+
+All template function signatures below come from `src/core/common/templates.js`.
+
+```js
+// Option 1 — override before init (safe and explicit)
+gantt.templates.task_text = function(start, end, task) {
+  return task.text;
+};
+gantt.init("gantt_here");
+
+// Option 2 — override inside onTemplatesReady (fires just before first render)
+gantt.attachEvent("onTemplatesReady", function() {
+  gantt.templates.task_text = function(start, end, task) {
+    return task.text + " [" + Math.round(task.progress * 100) + "%]";
+  };
+});
+```
+
+<Warning>
+  Templates that return HTML strings (such as `tooltip_text`, `task_text`, `grid_header_label`, `leftside_text`, `rightside_text`) are inserted into the DOM via `innerHTML`. **Always sanitize user-supplied task data** before embedding it in template output. Unsanitized strings from `task.text` or other task properties can lead to cross-site scripting (XSS) vulnerabilities.
+
+  ```js
+  // ❌ Unsafe — task.notes may contain <script> tags
+  gantt.templates.tooltip_text = function(start, end, task) {
+    return "<b>" + task.text + "</b><br>" + task.notes;
+  };
+
+  // ✅ Safe — escape HTML entities before inserting
+  function escapeHtml(str) {
+    return String(str)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+  gantt.templates.tooltip_text = function(start, end, task) {
+    return "<b>" + escapeHtml(task.text) + "</b><br>" + escapeHtml(task.notes || "");
+  };
+  ```
+</Warning>
+
+---
+
+## Task bar templates
+
+### `task_text(start, end, task)` → `string`
+
+Returns the text rendered inside a task bar. Defaults to `task.text`.
+
+| Parameter | Type | Description |
+|---|---|---|
+| `start` | `Date` | Task start date |
+| `end` | `Date` | Task end date |
+| `task` | `ITask` | The task object |
+
+```js
+gantt.templates.task_text = function(start, end, task) {
+  const pct = Math.round((task.progress || 0) * 100);
+  return escapeHtml(task.text) + " &mdash; " + pct + "%";
+};
+```
+
+---
+
+### `task_class(start, end, task)` → `string`
+
+Returns one or more CSS class names (space-separated) to add to the task bar element. Defaults to an empty string.
+
+| Parameter | Type | Description |
+|---|---|---|
+| `start` | `Date` | Task start date |
+| `end` | `Date` | Task end date |
+| `task` | `ITask` | The task object |
+
+```js
+gantt.templates.task_class = function(start, end, task) {
+  const classes = [];
+  if (task.priority === "high")   classes.push("task-high-priority");
+  if (task.progress === 1)        classes.push("task-completed");
+  return classes.join(" ");
+};
+```
+
+CSS:
+```css
+.task-high-priority .gantt_task_content { background-color: #e74c3c; }
+.task-completed     .gantt_task_content { background-color: #2ecc71; }
+```
+
+---
+
+### `task_date(date)` → `string`
+
+Formats a single date for display in the task bar tooltip and related UI elements. By default it uses `gantt.config.task_date` format string.
+
+| Parameter | Type | Description |
+|---|---|---|
+| `date` | `Date` | The date to format |
+
+```js
+gantt.templates.task_date = function(date) {
+  return gantt.date.date_to_str("%d %M %Y")(date);
+};
+```
+
+---
+
+### `task_end_date(date)` → `string`
+
+Formats the end date shown in the task detail panel. By default delegates to `gantt.templates.task_date`.
+
+```js
+gantt.templates.task_end_date = function(date) {
+  // Show the day before the technical end date (exclusive end convention)
+  const displayDate = gantt.date.add(date, -1, "day");
+  return gantt.templates.task_date(displayDate);
+};
+```
+
+---
+
+### `task_time(start, end, task)` → `string`
+
+Returns the date range string shown in the task detail tooltip. By default renders `"start - end"` using `task_date` and `task_end_date`.
+
+```js
+gantt.templates.task_time = function(start, end, task) {
+  return gantt.templates.task_date(start) +
+    " &ndash; " +
+    gantt.templates.task_end_date(end);
+};
+```
+
+---
+
+### `leftside_text(start, end, task)` → `string`
+
+Returns HTML rendered to the **left** of the task bar (outside the bar element). Defaults to no text.
+
+| Parameter | Type | Description |
+|---|---|---|
+| `start` | `Date` | Task start date |
+| `end` | `Date` | Task end date |
+| `task` | `ITask` | The task object |
+
+```js
+gantt.templates.leftside_text = function(start, end, task) {
+  if (task.deadline) {
+    return "<span class='deadline-label'>⚑</span>";
+  }
+  return "";
+};
+```
+
+---
+
+### `rightside_text(start, end, task)` → `string`
+
+Returns HTML rendered to the **right** of the task bar (outside the bar element). Defaults to no text.
+
+```js
+gantt.templates.rightside_text = function(start, end, task) {
+  return escapeHtml(task.owner || "");
+};
+```
+
+---
+
+### `progress_text(start, end, task)` → `string`
+
+Returns text rendered on the progress segment of the task bar. Defaults to an empty string.
+
+```js
+gantt.templates.progress_text = function(start, end, task) {
+  return Math.round((task.progress || 0) * 100) + "%";
+};
+```
+
+---
+
+### `task_row_class(start, end, task)` → `string`
+
+Returns CSS class names added to the **timeline** row element for a task (the row that spans the full width of the chart). Complements `grid_row_class` which affects the grid side.
+
+```js
+gantt.templates.task_row_class = function(start, end, task) {
+  return task.type === "milestone" ? "milestone-row" : "";
+};
+```
+
+---
+
+## Tooltip templates
+
+### `tooltip_text(start, end, task)` → `string`
+
+Returns the HTML content of the hover tooltip shown over a task bar. Requires the `tooltip` plugin. The default renders the task name, start date, and end date.
+
+| Parameter | Type | Description |
+|---|---|---|
+| `start` | `Date` | Task start date |
+| `end` | `Date` | Task end date |
+| `task` | `ITask` | The task object |
+
+```js
+// Default implementation from templates.js:
+gantt.templates.tooltip_text = function(start, end, task) {
+  return `<div>Task: ${escapeHtml(task.text)}</div>
+    <div>Start date: ${gantt.templates.tooltip_date_format(start)}</div>
+    <div>End date:   ${gantt.templates.tooltip_date_format(end)}</div>`;
+};
+```
+
+---
+
+### `tooltip_date_format(date)` → `string`
+
+Formats dates used inside tooltip HTML. Defaults to `"%Y-%m-%d"` format.
+
+```js
+gantt.templates.tooltip_date_format = gantt.date.date_to_str("%d %b %Y");
+```
+
+---
+
+## Grid templates
+
+### `grid_row_class(start, end, task)` → `string`
+
+Returns CSS class names added to the grid row element for a task. Use to highlight overdue tasks, apply custom colors, etc.
+
+```js
+gantt.templates.grid_row_class = function(start, end, task) {
+  const today = new Date();
+  if (!task.$open && task.end_date < today && task.progress < 1) {
+    return "overdue-task";
+  }
+  return "";
+};
+```
+
+CSS:
+```css
+.overdue-task { background-color: #ffeaea; }
+```
+
+---
+
+### `grid_header_class(column, config)` → `string`
+
+Returns CSS class names for a grid column header cell.
+
+| Parameter | Type | Description |
+|---|---|---|
+| `column` | `IColumnItem` | The column configuration object |
+| `config` | `IGanttConfig` | The current gantt config |
+
+```js
+gantt.templates.grid_header_class = function(column, config) {
+  return column.name === "text" ? "primary-column-header" : "";
+};
+```
+
+---
+
+### `date_grid(date, task, column)` → `string`
+
+Formats date values displayed inside grid cells for columns whose `name` is `"start_date"` or `"end_date"`.
+
+```js
+gantt.templates.date_grid = function(date, task, column) {
+  if (task && gantt.isUnscheduledTask(task)) {
+    return "–";
+  }
+  return gantt.templates.grid_date_format(date, column);
+};
+```
+
+---
+
+## Timeline / Scale templates
+
+### `scale_cell_class(date)` → `string`
+
+Returns CSS class names for a cell in the timeline scale row (the header row showing date labels).
+
+| Parameter | Type | Description |
+|---|---|---|
+| `date` | `Date` | The date that the scale cell represents |
+
+```js
+gantt.templates.scale_cell_class = function(date) {
+  if (date.getDay() === 0 || date.getDay() === 6) {
+    return "weekend-scale";
+  }
+  return "";
+};
+```
+
+CSS:
+```css
+.weekend-scale { background-color: #f5f5f5; color: #aaa; }
+```
+
+---
+
+### `scale_row_class(scale)` → `string`
+
+Returns CSS class names for an entire scale row element.
+
+```js
+gantt.templates.scale_row_class = function(scale) {
+  return scale.unit === "month" ? "month-scale-row" : "";
+};
+```
+
+---
+
+### `timeline_cell_class(task, date)` → `string`
+
+Returns CSS class names for a single cell in the **timeline body** (the intersection of a task row and a date column). Useful for highlighting weekends, holidays, or specific date ranges per task.
+
+| Parameter | Type | Description |
+|---|---|---|
+| `task` | `ITask` | The task whose row the cell belongs to |
+| `date` | `Date` | The date the cell represents |
+
+```js
+gantt.templates.timeline_cell_class = function(task, date) {
+  const day = date.getDay();
+  if (day === 0 || day === 6) return "weekend-cell";
+  return "";
+};
+```
+
+CSS:
+```css
+.weekend-cell { background-color: #f8f8f8; }
+```
+
+---
+
+### `timeline_cell_content(task, date)` → `string`
+
+Returns HTML content rendered inside a timeline body cell. Defaults to an empty string.
+
+```js
+gantt.templates.timeline_cell_content = function(task, date) {
+  // Show a marker on the task's deadline date
+  if (task.deadline && +task.deadline === +date) {
+    return "<div class='deadline-marker'>!</div>";
+  }
+  return "";
+};
+```
+
+---
+
+## Link templates
+
+### `link_class(link)` → `string`
+
+Returns CSS class names added to the dependency link SVG/HTML element.
+
+| Parameter | Type | Description |
+|---|---|---|
+| `link` | `ILink` | The link object |
+
+```js
+gantt.templates.link_class = function(link) {
+  const types = gantt.config.links;
+  if (link.type === types.finish_to_finish) return "ff-link";
+  if (link.type === types.start_to_start)  return "ss-link";
+  return "";
+};
+```
+
+---
+
+## Formatting templates
+
+### `format_date(date)` → `string`
+
+Serializes a `Date` to a string using the current `gantt.config.date_format`. Used internally by serialization and the DataProcessor.
+
+### `parse_date(str)` → `Date`
+
+Parses a date string into a `Date` object using the current `gantt.config.date_format`.
+
+<Note>
+  `format_date` and `parse_date` are auto-generated from `gantt.config.date_format` at initialization. Overriding them lets you use a completely custom date format not supported by the built-in format string syntax, but be careful to keep parse and format consistent.
+</Note>
+
+```js
+// Custom ISO-only format override
+gantt.templates.format_date = function(date) {
+  return date.toISOString().slice(0, 10);
+};
+gantt.templates.parse_date = function(str) {
+  return new Date(str);
+};
+```

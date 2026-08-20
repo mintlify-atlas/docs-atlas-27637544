@@ -1,0 +1,311 @@
+---
+title: "Configuring Timeline Scales in DHTMLX Gantt"
+sidebarTitle: "Scales"
+description: "Configure single and multi-level timeline scales in DHTMLX Gantt using gantt.config.scales, time units, format functions, and the zoom extension."
+---
+
+The timeline header in DHTMLX Gantt is driven by an array of scale objects stored in `gantt.config.scales`. Each scale object defines one row of the header — its time unit, step, label format, and optional per-cell CSS class. Stacking multiple scales creates a multi-level header (for example, months on top with days underneath). You can configure scales statically before initialization, swap them at runtime, or let the built-in zoom extension manage them interactively.
+
+## The `Scale` Type
+
+Every entry in `gantt.config.scales` follows this shape (all fields are optional — defaults are applied by the scale engine):
+
+<ParamField path="unit" type="TimeUnit | string" default='"day"'>
+  The time granularity for this scale row. Built-in values: `"minute"`, `"hour"`, `"day"`, `"week"`, `"month"`, `"quarter"`, `"year"`. Custom units can also be registered on the `gantt.date` helper.
+</ParamField>
+
+<ParamField path="step" type="number" default="1">
+  How many units each column spans. For example, `unit: "hour", step: 6` creates one column every 6 hours.
+</ParamField>
+
+<ParamField path="format" type="string | ((date: Date) => string)">
+  The column header label. Accepts a strftime-style pattern string (e.g., `"%d %M"`) or a formatter function that receives the cell start `Date` and returns a string. Also aliased as `date` for backward compatibility.
+</ParamField>
+
+<ParamField path="css" type="string | ((date: Date) => string)">
+  A CSS class applied to each scale cell. Pass a function to apply different classes based on the date — for example, highlighting weekends.
+</ParamField>
+
+<ParamField path="sticky" type="boolean">
+  When `true`, the scale label stays visible while the cell is wider than the viewport (useful for long month or year labels).
+</ParamField>
+
+<ParamField path="column_width" type="number | null">
+  Fixes the pixel width per cell on this scale, overriding `gantt.config.min_column_width` for the bottom-most scale.
+</ParamField>
+
+## Time Unit Reference
+
+The `TimeUnit` union covers all built-in granularities in ascending order:
+
+| Value | Description |
+|---|---|
+| `"minute"` | One or more minutes per column |
+| `"hour"` | One or more hours per column |
+| `"day"` | One or more days per column |
+| `"week"` | One or more calendar weeks per column |
+| `"month"` | One or more months per column |
+| `"quarter"` | One or more quarters per column |
+| `"year"` | One or more years per column |
+
+## Single-Scale Configuration
+
+The simplest setup uses one scale entry — the default day scale:
+
+```javascript
+gantt.config.scales = [
+  { unit: "day", step: 1, format: "%d %M" }
+];
+
+gantt.init("gantt_here");
+gantt.parse(tasks);
+```
+
+For a month/week view:
+
+```javascript
+gantt.config.scales = [
+  { unit: "month", step: 1, format: "%F %Y" }
+];
+```
+
+## Multi-Scale Configuration
+
+Stack multiple scale objects to create layered headers. The first entry in the array is the topmost (coarsest) header row; the last is the bottommost (finest) row.
+
+```javascript
+// Month / Week / Day — three rows
+gantt.config.min_column_width = 50;
+gantt.config.scale_height = 90;
+
+var weekScaleTemplate = function(date) {
+  var dateToStr = gantt.date.date_to_str("%d %M");
+  var endDate   = gantt.date.add(date, 7 - date.getDay(), "day");
+  return dateToStr(date) + " – " + dateToStr(endDate);
+};
+
+var daysStyle = function(date) {
+  if (date.getDay() === 0 || date.getDay() === 6) {
+    return "weekend";
+  }
+  return "";
+};
+
+gantt.config.scales = [
+  { unit: "month", step: 1, format: "%F, %Y" },
+  { unit: "week",  step: 1, format: weekScaleTemplate },
+  { unit: "day",   step: 1, format: "%D", css: daysStyle }
+];
+```
+
+<Note>
+  `gantt.config.scale_height` sets the total pixel height of the entire scale header area. Divide it by the number of scale rows to get the height per row (the library distributes height equally across rows).
+</Note>
+
+## Minute-Level Scale
+
+Use `"minute"` for scheduling at sub-hour granularity. Make sure to set `gantt.config.duration_unit` and `gantt.config.date_format` accordingly:
+
+```javascript
+gantt.config.date_format    = "%d-%m-%Y %H:%i";
+gantt.config.min_column_width = 20;
+gantt.config.duration_unit  = "minute";
+gantt.config.duration_step  = 60;
+gantt.config.scale_height   = 75;
+
+gantt.config.scales = [
+  { unit: "day",    step: 1,  format: "%j %F, %l" },
+  { unit: "hour",   step: 1,  format: "%g %a" },
+  { unit: "minute", step: 15, format: "%i" }
+];
+```
+
+## Quarter Scale
+
+`"quarter"` maps to three-month periods. Use a formatter function to produce custom labels such as "Q1", "Q2":
+
+```javascript
+gantt.config.min_column_width = 50;
+gantt.config.scale_height = 90;
+
+function quarterLabel(date) {
+  var month = date.getMonth();
+  if      (month >= 9) return "Q4";
+  else if (month >= 6) return "Q3";
+  else if (month >= 3) return "Q2";
+  else                 return "Q1";
+}
+
+gantt.config.scales = [
+  { unit: "year",    step: 1, format: "%Y" },
+  { unit: "quarter", step: 1, format: quarterLabel },
+  { unit: "month",   step: 1, format: "%M" }
+];
+```
+
+## Custom Format Functions
+
+Any scale can use a function for its `format` field. The function receives the cell start `Date` and must return a string (HTML is allowed):
+
+```javascript
+gantt.config.scale_height = 44;
+
+var dayNumber  = function(date) { return gantt.columnIndexByDate(date) + 1; };
+var dateFormat = gantt.date.date_to_str("%F %d");
+
+gantt.config.scales = [
+  {
+    unit: "day",
+    step: 1,
+    format: function(date) {
+      return "<strong>Day " + dayNumber(date) + "</strong><br/>" + dateFormat(date);
+    }
+  }
+];
+```
+
+## Scale Height and Column Width
+
+Two config properties govern the overall scale size:
+
+<ParamField path="gantt.config.scale_height" type="number">
+  Total pixel height of the scale header (all rows combined). Increase this when you stack three or more scale rows. Default is `35`.
+</ParamField>
+
+<ParamField path="gantt.config.min_column_width" type="number" default="70">
+  The minimum pixel width of each timeline column. A larger value zooms the chart out; smaller values compress it. The `gantt.ext.zoom` extension adjusts this dynamically when scrolling.
+</ParamField>
+
+## Zoom Extension
+
+The `gantt.ext.zoom` API lets you define named zoom levels and switch between them programmatically or via mouse-wheel. Activate it by calling `gantt.ext.zoom.init()` before `gantt.init()`.
+
+### Basic Zoom Setup
+
+```javascript
+var zoomConfig = {
+  levels: [
+    {
+      name: "hour",
+      scale_height: 35,
+      scales: [
+        { unit: "day",  step: 1, format: "%d %M" },
+        { unit: "hour", step: 1, format: "%H:%i" }
+      ]
+    },
+    {
+      name: "day",
+      scale_height: 35,
+      scales: [
+        { unit: "day", step: 1, format: "%d %M" }
+      ]
+    },
+    {
+      name: "week",
+      scale_height: 70,
+      scales: [
+        { unit: "month", step: 1, format: "%F, %Y" },
+        { unit: "week",  step: 1, format: "Week %W" }
+      ]
+    },
+    {
+      name: "month",
+      scale_height: 70,
+      scales: [
+        { unit: "year",  step: 1, format: "%Y" },
+        { unit: "month", step: 1, format: "%M" }
+      ]
+    },
+    {
+      name: "year",
+      scale_height: 70,
+      scales: [
+        { unit: "year", step: 1, format: "%Y" }
+      ]
+    }
+  ]
+};
+
+gantt.ext.zoom.init(zoomConfig);
+gantt.ext.zoom.setLevel("day");
+
+gantt.init("gantt_here");
+gantt.parse(tasks);
+```
+
+### Zoom Methods
+
+| Method | Description |
+|---|---|
+| `gantt.ext.zoom.init(config)` | Initialises the zoom extension with a level list |
+| `gantt.ext.zoom.setLevel(name)` | Jumps directly to a named (or index) level |
+| `gantt.ext.zoom.zoomIn()` | Moves one level toward finer granularity |
+| `gantt.ext.zoom.zoomOut()` | Moves one level toward coarser granularity |
+| `gantt.ext.zoom.getCurrentLevel()` | Returns the current level index |
+| `gantt.ext.zoom.zoomToFit()` | Selects the level that makes all tasks fit the viewport |
+| `gantt.ext.zoom.resetZoom()` | Restores the scale that was active before `zoomToFit()` |
+
+### Mouse-Wheel Zoom
+
+Pass `trigger: "wheel"` and an optional modifier key to enable scroll-driven zooming:
+
+```javascript
+gantt.ext.zoom.init({
+  levels: [ /* ... */ ],
+  minColumnWidth: 80,
+  maxColumnWidth: 150,
+  useKey: "ctrlKey",
+  trigger: "wheel",
+  element: function() {
+    return gantt.$root.querySelector(".gantt_task");
+  }
+});
+```
+
+<Tip>
+  The `element` option scopes the wheel listener to a specific DOM node — usually the timeline panel — so only scroll events inside the chart trigger zooming, not the rest of the page.
+</Tip>
+
+### Zoom to Fit
+
+`zoomToFit()` automatically picks the zoom level that fits all loaded tasks (or only visible ones) inside the current viewport:
+
+```javascript
+// Fit all tasks
+gantt.ext.zoom.zoomToFit();
+
+// Reset to the scale that was active before fitting
+gantt.ext.zoom.resetZoom();
+```
+
+The zoom level array should run from finest (e.g., hours) to coarsest (e.g., decades) so the algorithm can find the best fit:
+
+```javascript
+gantt.ext.zoom.init({
+  levels: [
+    { name: "hour",    scales: [{ unit: "day", format: "%d %M" }, { unit: "hour", format: "%H:%i" }] },
+    { name: "day",     scales: [{ unit: "day", format: "%d %M" }] },
+    { name: "week",    scale_height: 50, scales: [
+      { unit: "week", step: 1, format: function(date) {
+        var s = gantt.date.date_to_str("%d %M");
+        var e = gantt.date.add(date, 7 - date.getDay(), "day");
+        return s(date) + " – " + s(e);
+      }},
+      { unit: "day", step: 1, format: "%j %D" }
+    ]},
+    { name: "month",   scale_height: 50, scales: [
+      { unit: "month", step: 1, format: "%F, %Y" },
+      { unit: "week",  step: 1, format: function(date) {
+        var s = gantt.date.date_to_str("%d %M");
+        var e = gantt.date.add(date, 7 - date.getDay(), "day");
+        return s(date) + " – " + s(e);
+      }}
+    ]},
+    { name: "year",    scale_height: 50, scales: [{ unit: "year", step: 1, format: "%Y" }] }
+  ]
+});
+
+gantt.config.fit_tasks = true;
+gantt.ext.zoom.init(zoomConfig);
+gantt.ext.zoom.setLevel("day");
+```

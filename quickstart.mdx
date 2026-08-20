@@ -1,47 +1,209 @@
 ---
-title: "Quickstart"
-description: "Begin with a guide on the fastest path to a successful outcome"
+title: "Quickstart: Render a Gantt Chart in Under 5 Minutes"
+sidebarTitle: "Quickstart"
+description: "Install dhtmlx-gantt, add a container, configure a date format, call gantt.init(), and load tasks and links with gantt.parse() to get a working chart."
 ---
 
-Describe how someone begins using your product. What is the first thing they need to do? Are there any prerequisites?
-
-A quickstart should take someone from zero to using your product. They'll get a quick win and a sense of what they can accomplish.
-
-## Prerequisites
-
-Before you begin, you must have:
-
-- Requirement one (for example, Node.js 18+, a free account, an API key)
-- Requirement two (for example, a compatible device, a compatible browser, a compatible operating system)
-
-## Get started
+This guide takes you from zero to a fully working interactive Gantt chart. You will install the `dhtmlx-gantt` package, add a container element, configure the date format, initialize the chart, and load a sample project with tasks and dependency links — all in fewer than 30 lines of code.
 
 <Steps>
-  <Step title="Install">
-    Describe how to install your product or sign up.
+  <Step title="Install the package">
+    Add `dhtmlx-gantt` to your project using your preferred package manager.
 
     ```bash
-    npm install your-package
+    npm install dhtmlx-gantt
     ```
   </Step>
-  <Step title="Configure">
-    Describe any setup or configuration needed before first use.
 
-    ```bash
-    your-cli init
+  <Step title="Import the script and styles">
+    With a module bundler (Vite, webpack, Rollup, or similar), import both the JavaScript module and the CSS stylesheet.
+
+    ```js
+    import { gantt } from "dhtmlx-gantt";
+    import "dhtmlx-gantt/codebase/dhtmlxgantt.css";
+    ```
+
+    The side-effect import also registers a global `gantt` object, so the same bundled files work with plain `<script>` tags:
+
+    ```html
+    <script src="codebase/dhtmlxgantt.js"></script>
+    <link rel="stylesheet" href="codebase/dhtmlxgantt.css">
     ```
   </Step>
-  <Step title="Run it">
-    Show the first thing a user does to see it working.
 
-    ```bash
-    your-cli start
+  <Step title="Add a container element">
+    Create a `<div>` in your HTML with an explicit width and height. The chart fills the container completely, so CSS dimensions control the chart size.
+
+    ```html
+    <div id="gantt_here" style="width: 100%; height: 600px;"></div>
+    ```
+  </Step>
+
+  <Step title="Configure the date format">
+    Set `gantt.config.date_format` to match the date strings in your data **before** calling `gantt.init()`. The format string uses `strftime`-style tokens.
+
+    ```js
+    gantt.config.date_format = "%Y-%m-%d";
+    ```
+  </Step>
+
+  <Step title="Initialize the chart">
+    Call `gantt.init()` with the container's `id` (or a direct DOM reference). This renders the Gantt grid and timeline into the container.
+
+    ```js
+    gantt.init("gantt_here");
+    ```
+  </Step>
+
+  <Step title="Load tasks and links">
+    Call `gantt.parse()` with an object containing a `data` array of tasks and a `links` array of dependency links. The chart renders immediately.
+
+    ```js
+    gantt.parse({
+        data: [
+            { id: 1, text: "Website redesign", type: "project",    progress: 0.4, open: true },
+            { id: 2, text: "Research",         start_date: "2026-06-01", duration: 4, parent: 1, progress: 1 },
+            { id: 3, text: "Wireframes",       start_date: "2026-06-05", duration: 6, parent: 1, progress: 0.6 },
+            { id: 4, text: "Visual design",    start_date: "2026-06-11", duration: 8, parent: 1, progress: 0.2 },
+            { id: 5, text: "Launch",           start_date: "2026-06-19", type: "milestone", parent: 1 }
+        ],
+        links: [
+            { id: 1, source: 2, target: 3, type: "0" },  // finish-to-start
+            { id: 2, source: 3, target: 4, type: "0" },
+            { id: 3, source: 4, target: 5, type: "0" }
+        ]
+    });
     ```
   </Step>
 </Steps>
 
-<Tip>
-  Give people a way to get help. This could be a link to a support page, a chat with a customer support agent, or a forum for your product.
+## Complete Working Example
 
-  Example: Need help? Reach out to us at [support@yourcompany.com](mailto:support@yourcompany.com).
-</Tip>
+Putting all the steps together, here is the full minimal setup:
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+  <script src="codebase/dhtmlxgantt.js"></script>
+  <link rel="stylesheet" href="codebase/dhtmlxgantt.css">
+  <style>
+    html, body { margin: 0; padding: 0; height: 100%; }
+    #gantt_here { width: 100%; height: 100vh; }
+  </style>
+</head>
+<body>
+  <div id="gantt_here"></div>
+
+  <script>
+    gantt.config.date_format = "%Y-%m-%d";
+
+    gantt.init("gantt_here");
+
+    gantt.parse({
+        data: [
+            { id: 1, text: "Website redesign", type: "project",    progress: 0.4, open: true },
+            { id: 2, text: "Research",         start_date: "2026-06-01", duration: 4, parent: 1, progress: 1 },
+            { id: 3, text: "Wireframes",       start_date: "2026-06-05", duration: 6, parent: 1, progress: 0.6 },
+            { id: 4, text: "Visual design",    start_date: "2026-06-11", duration: 8, parent: 1, progress: 0.2 },
+            { id: 5, text: "Launch",           start_date: "2026-06-19", type: "milestone", parent: 1 }
+        ],
+        links: [
+            { id: 1, source: 2, target: 3, type: "0" },
+            { id: 2, source: 3, target: 4, type: "0" },
+            { id: 3, source: 4, target: 5, type: "0" }
+        ]
+    });
+  </script>
+</body>
+</html>
+```
+
+## Key Concepts
+
+<Accordion title="gantt.config.date_format">
+  The `date_format` config property tells the parser how to interpret date strings in your task data. It uses `strftime`-style tokens:
+
+  | Token | Meaning | Example |
+  |:------|:--------|:--------|
+  | `%Y` | Four-digit year | `2026` |
+  | `%m` | Two-digit month (01–12) | `06` |
+  | `%d` | Two-digit day (01–31) | `01` |
+  | `%H` | Hour (00–23) | `09` |
+  | `%i` | Minutes (00–59) | `30` |
+
+  Set this **before** `gantt.init()` so the parser is configured when data is first loaded.
+</Accordion>
+
+<Accordion title="Task types">
+  Each task object can have a `type` property that controls how it is rendered:
+
+  | Type | Description |
+  |:-----|:------------|
+  | `"task"` (default) | A regular bar representing a work item |
+  | `"project"` | A summary bar that groups child tasks |
+  | `"milestone"` | A diamond marker with no duration |
+</Accordion>
+
+<Accordion title="Link types">
+  The `type` field on each link object is a string code for the dependency relationship:
+
+  | Code | Relationship |
+  |:-----|:-------------|
+  | `"0"` | Finish-to-start (FS) |
+  | `"1"` | Start-to-start (SS) |
+  | `"2"` | Finish-to-finish (FF) |
+  | `"3"` | Start-to-finish (SF) |
+</Accordion>
+
+## Enabling Plugins
+
+<Note>
+  Always call `gantt.plugins()` **before** `gantt.init()`. Plugins registered after initialization will not activate correctly.
+</Note>
+
+The library ships with optional extensions that are off by default. Activate them by passing a configuration object to `gantt.plugins()`:
+
+```js
+gantt.plugins({
+    tooltip:             true,   // hover tooltips on task bars
+    quick_info:          true,   // touch-friendly task popup
+    fullscreen:          true,   // fullscreen toggle
+    keyboard_navigation: true,   // arrow-key navigation
+    drag_timeline:       true,   // drag to scroll the timeline
+    click_drag:          true    // draw new tasks by dragging on the timeline
+});
+
+gantt.init("gantt_here");
+```
+
+## Multiple Chart Instances
+
+To render several independent Gantt charts on one page, use the `Gantt` factory's `getGanttInstance()` method. The default `gantt` export is itself an instance created this way, so existing single-chart code continues to work unchanged.
+
+```js
+import { Gantt } from "dhtmlx-gantt";
+
+var chartA = Gantt.getGanttInstance();
+var chartB = Gantt.getGanttInstance();
+
+chartA.init("gantt_a");
+chartB.init("gantt_b");
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Installation" icon="download" href="/installation">
+    Full details on npm, CDN, bundler, and TypeScript setup.
+  </Card>
+  <Card title="Live Demo" icon="play" href="https://snippet.dhtmlx.com/a69d7378a">
+    See the quickstart example running in the browser.
+  </Card>
+  <Card title="Building from Source" icon="hammer" href="/building-from-source">
+    Clone the repo, edit the source, and rebuild the library.
+  </Card>
+  <Card title="API Reference" icon="book" href="https://docs.dhtmlx.com/gantt/api/">
+    Config properties, templates, events, and methods.
+  </Card>
+</CardGroup>

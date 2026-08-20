@@ -1,0 +1,209 @@
+---
+title: "Skins and Themes for DHTMLX Gantt Chart"
+sidebarTitle: "Skins & Themes"
+description: "Switch between the built-in DHTMLX Gantt skins — Default, Terrace, Skyblue, Meadow, Broadway, Dark, and high-contrast variants — and customise CSS variables."
+---
+
+DHTMLX Gantt ships with a set of ready-made visual skins that control colors, typography, borders, and spacing across the entire chart. You can apply a skin by calling `gantt.setSkin()` before or after initialisation, or by swapping the `dhtmlxgantt.css` import path. Deeper branding is possible through CSS custom properties, which every skin exposes on `:root`.
+
+## Available Skins
+
+<CardGroup cols={2}>
+  <Card title="Default (Material)" icon="palette">
+    The standard skin included in `dhtmlxgantt.css`. Applies automatically with no extra code — clean, flat design inspired by Material Design principles.
+  </Card>
+  <Card title="Terrace" icon="mountain">
+    A light, airy theme with a green accent palette. Activated with `gantt.setSkin("terrace")`.
+  </Card>
+  <Card title="Skyblue" icon="cloud">
+    A cool blue theme suited for professional scheduling tools. Activated with `gantt.setSkin("skyblue")`.
+  </Card>
+  <Card title="Meadow" icon="leaf">
+    A soft, nature-inspired green theme. Activated with `gantt.setSkin("meadow")`.
+  </Card>
+  <Card title="Broadway" icon="star">
+    A bold, high-contrast dark-on-dark-border theme with wide rows. Activated with `gantt.setSkin("broadway")`.
+  </Card>
+  <Card title="Dark" icon="moon">
+    A true dark-mode skin with dark backgrounds throughout the chart and lightbox. Activated with `gantt.setSkin("dark")`.
+  </Card>
+  <Card title="High Contrast Black" icon="eye">
+    Meets WCAG contrast requirements. Dark background with high-visibility text and borders. Activated with `gantt.setSkin("contrast-black")`.
+  </Card>
+  <Card title="High Contrast White" icon="eye">
+    Meets WCAG contrast requirements. White background with maximum-contrast text and borders. Activated with `gantt.setSkin("contrast-white")`.
+  </Card>
+</CardGroup>
+
+## Applying a Skin at Startup
+
+The most direct way is to call `gantt.setSkin()` before `gantt.init()`:
+
+```html
+<!DOCTYPE html>
+<head>
+  <script src="dhtmlxgantt.js"></script>
+  <link rel="stylesheet" href="dhtmlxgantt.css">
+</head>
+<body>
+  <div id="gantt_here" style="width:100%;height:100%;"></div>
+  <script>
+    gantt.setSkin("terrace");     // or "skyblue", "meadow", "broadway", "dark", etc.
+    gantt.init("gantt_here");
+    gantt.parse(tasks);
+  </script>
+</body>
+```
+
+`gantt.setSkin()` injects the appropriate CSS class onto the container element and flushes the chart's render cache so the new colors take effect immediately — even after `gantt.init()` has already been called.
+
+## Switching Skins Dynamically at Runtime
+
+You can call `gantt.setSkin()` at any time to switch themes without re-initialising the chart:
+
+```javascript
+// Triggered by a user preference toggle
+document.getElementById("theme-select").addEventListener("change", function(e) {
+  gantt.setSkin(e.target.value);
+  // If needed, re-render to repaint any buffered elements
+  // gantt.render();
+});
+```
+
+The `dynamic_skin` sample demonstrates this pattern — a select control cycles through all eight skins and applies them live:
+
+```javascript
+// Available skin values
+var skins = [
+  "terrace",
+  "dark",
+  "material",
+  "contrast-white",
+  "contrast-black",
+  "broadway",
+  "meadow",
+  "skyblue"
+];
+```
+
+<Note>
+  The **Dark** skin expects a dark page background (`body { background: #1e1e1e; }` or equivalent). Without it, the page chrome around the chart will remain white and clash with the chart's dark interior.
+</Note>
+
+## CSS Custom Property Overrides
+
+Every skin in DHTMLX Gantt exposes its design tokens as CSS custom properties on `:root`. You can override any of these properties in your own stylesheet to create a branded theme without writing a custom skin from scratch.
+
+The most commonly overridden variables are:
+
+```css
+/* custom-gantt-theme.css */
+:root {
+  /* Primary accent color (buttons, selection, progress bar) */
+  --dhx-gantt-base-colors-primary: #6200ea;
+
+  /* Task bar fill color */
+  --dhx-gantt-task-background: #b39ddb;
+
+  /* Project bar fill color */
+  --dhx-gantt-project-background: #4a148c;
+
+  /* Milestone diamond fill color */
+  --dhx-gantt-milestone-background: #ff6f00;
+
+  /* Text inside task bars */
+  --dhx-gantt-task-color: #ffffff;
+
+  /* Dependency link line color */
+  --dhx-gantt-link-background: #ff6f00;
+
+  /* Overall chart background (grid + timeline area) */
+  --dhx-gantt-container-background: #fafafa;
+
+  /* Default text color in cells */
+  --dhx-gantt-container-color: #212121;
+
+  /* Scale header text color */
+  --dhx-gantt-scale-color: #424242;
+
+  /* Cell border and grid line color */
+  --dhx-gantt-base-colors-border: #e0e0e0;
+
+  /* Base font size */
+  --dhx-gantt-font-size: 14px;
+
+  /* Border radius on bars and controls */
+  --dhx-gantt-border-radius: 4px;
+}
+```
+
+Include this stylesheet after `dhtmlxgantt.css` and the overrides will apply on top of whichever skin is active:
+
+```html
+<link rel="stylesheet" href="dhtmlxgantt.css">
+<link rel="stylesheet" href="custom-gantt-theme.css">
+```
+
+<Tip>
+  To inspect the full list of available CSS variables for a given skin, open DevTools, select `:root`, and filter by `--dhx-gantt`. You will see all tokens that the current skin defines.
+</Tip>
+
+## Saving a Custom Skin via JavaScript
+
+You can read the current resolved values of all CSS variables and persist them as a `:root` block to recreate your customisation in any environment:
+
+```javascript
+function readThemeVariables(properties) {
+  var style = getComputedStyle(document.documentElement);
+  return properties.reduce(function(vars, prop) {
+    vars[prop] = style.getPropertyValue(prop).trim();
+    return vars;
+  }, {});
+}
+
+var cssVars = [
+  "--dhx-gantt-base-colors-primary",
+  "--dhx-gantt-task-background",
+  "--dhx-gantt-project-background",
+  "--dhx-gantt-task-color",
+  "--dhx-gantt-container-background",
+  "--dhx-gantt-base-colors-border",
+  "--dhx-gantt-font-size",
+  "--dhx-gantt-border-radius"
+];
+
+var values  = readThemeVariables(cssVars);
+var rules   = cssVars.map(function(k) { return "  " + k + ": " + values[k] + ";"; });
+var output  = "/* custom Gantt skin */\n:root {\n" + rules.join("\n") + "\n}";
+
+console.log(output); // copy into your CSS file
+```
+
+## Applying Dynamic Variable Overrides at Runtime
+
+Inject a `<style>` tag at runtime to apply variables without a static stylesheet:
+
+```javascript
+function applyThemeVariables(vars) {
+  var style = document.getElementById("gantt-css-vars");
+  if (!style) {
+    style = document.createElement("style");
+    style.id = "gantt-css-vars";
+    document.head.appendChild(style);
+  }
+  var rules = Object.entries(vars)
+    .filter(function(pair) { return !!pair[1]; })
+    .map(function(pair)    { return pair[0] + ": " + pair[1] + " !important;"; });
+
+  style.innerHTML = ":root { " + rules.join("\n") + " }";
+}
+
+applyThemeVariables({
+  "--dhx-gantt-base-colors-primary": "#6200ea",
+  "--dhx-gantt-task-background":     "#b39ddb"
+});
+```
+
+<Warning>
+  Using `!important` overrides every skin's defaults. Remove or adjust the flag if you want skin-specific variables to still take precedence over some of your overrides.
+</Warning>

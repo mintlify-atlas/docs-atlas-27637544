@@ -1,0 +1,192 @@
+---
+title: "Syncing DHTMLX Gantt with a REST Backend"
+sidebarTitle: "Backend Integration"
+description: "Use gantt.createDataProcessor() to sync task and link changes with a REST API automatically, with REST-JSON mode, custom routers, and batch updates."
+---
+
+DHTMLX Gantt ships a built-in `dataProcessor` that watches for task and link changes and sends them to a server automatically. You set it up once after `gantt.init()` and `gantt.parse()`, and it handles create, update, and delete operations from that point on — no manual event wiring required.
+
+## createDataProcessor()
+
+`gantt.createDataProcessor(config)` creates and attaches a DataProcessor instance to the chart. It returns the processor object for further configuration.
+
+```js
+var dp = gantt.createDataProcessor({
+  url:  "/api",
+  mode: "REST-JSON"
+});
+```
+
+## REST-JSON Mode
+
+In `REST-JSON` mode the processor maps each change to a standard HTTP request. The `url` option is a base path; the processor appends the entity type and ID automatically.
+
+| Action | Entity | HTTP method | URL |
+|--------|--------|-------------|-----|
+| Create task | task | POST | `/api/task` |
+| Update task | task | PUT | `/api/task/{id}` |
+| Delete task | task | DELETE | `/api/task/{id}` |
+| Create link | link | POST | `/api/link` |
+| Update link | link | PUT | `/api/link/{id}` |
+| Delete link | link | DELETE | `/api/link/{id}` |
+
+Request bodies for POST and PUT are sent as JSON. Your server must return a JSON response; for create operations, return `{ "action": "inserted", "tid": <new-id> }` so the processor can map the server-assigned ID back to the client-side task:
+
+```js
+gantt.config.date_format = "%Y-%m-%d %H:%i";
+gantt.init("gantt_here");
+gantt.load("/api/data");
+
+var dp = gantt.createDataProcessor({
+  url:  "/api",
+  mode: "REST-JSON"
+});
+```
+
+<Note>
+  The `Content-Type: application/json` header is set automatically in REST-JSON mode. Make sure your server parses JSON request bodies (e.g. `express.json()` middleware in Node.js).
+</Note>
+
+## Custom Router Mode
+
+For full control over how each change is sent to the server, provide a `router` function. The function receives four arguments and must return a `Promise`.
+
+```js
+var dp = gantt.createDataProcessor({
+  router: function (entity, action, data, id) {
+    // entity: "task" | "link"
+    // action: "create" | "update" | "delete"
+    // data:   the task or link object
+    // id:     the current client-side ID
+
+    var baseUrl = "/api/" + entity + "s"; // e.g. /api/tasks
+
+    switch (action) {
+      case "create":
+        return fetch(baseUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data)
+        }).then(function (res) { return res.json(); });
+
+      case "update":
+        return fetch(baseUrl + "/" + id, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data)
+        }).then(function (res) { return res.json(); });
+
+      case "delete":
+        return fetch(baseUrl + "/" + id, {
+          method: "DELETE"
+        }).then(function (res) { return res.json(); });
+    }
+  }
+});
+```
+
+The router function also accepts a plain object with `task` and `link` keys, each holding per-entity router functions:
+
+```js
+var dp = gantt.createDataProcessor({
+  task: {
+    create:  function (data)     { /* return Promise */ },
+    update:  function (data, id) { /* return Promise */ },
+    delete:  function (id)       { /* return Promise */ }
+  },
+  link: {
+    create:  function (data)     { /* return Promise */ },
+    update:  function (data, id) { /* return Promise */ },
+    delete:  function (id)       { /* return Promise */ }
+  }
+});
+```
+
+## Batch Updates
+
+Pass `batchUpdate: true` to collect all pending changes and send them in a single request rather than one request per change:
+
+```js
+var dp = gantt.createDataProcessor({
+  url:         "/api",
+  mode:        "REST-JSON",
+  batchUpdate: true
+});
+```
+
+Batch mode is useful when you import a large dataset or perform a multi-step operation that generates many changes at once.
+
+## deleteAfterConfirmation
+
+When `deleteAfterConfirmation` is enabled, the processor waits for the server to confirm a deletion before removing the task from the chart. This prevents the chart from becoming out-of-sync if the server rejects the delete.
+
+```js
+var dp = gantt.createDataProcessor({
+  url:                    "/api",
+  mode:                   "REST-JSON",
+  deleteAfterConfirmation: true
+});
+```
+
+<Note>
+  Without `deleteAfterConfirmation`, the task is removed from the chart immediately when the user triggers a delete, and the chart does not roll back the removal if the server returns an error. Enable this option when your server may reject deletes (e.g. due to business rules or permissions).
+</Note>
+
+## DataProcessor Events
+
+The DataProcessor is eventable. Attach listeners to react to sync results:
+
+```js
+dp.attachEvent("onAfterUpdate", function (id, action, tid, response) {
+  if (action === "error") {
+    gantt.message({ type: "error", text: "Sync failed for item " + id });
+  }
+});
+```
+
+## Custom Router with localStorage (Demo Pattern)
+
+The `createDataProcessor` function also accepts a single function as its argument, which is called for every change with `(entity, action, data, id)` parameters. This is the pattern used in the bundled demo:
+
+```js
+var dp = gantt.createDataProcessor(function (entity, action, data, id) {
+  var store = JSON.parse(localStorage.getItem(entity) || "[]");
+
+  switch (action) {
+    case "create":
+      store.push(data);
+      break;
+    case "update":
+      var idx = store.findIndex(function (item) { return item.id == id; });
+      if (idx > -1) store[idx] = data;
+      break;
+    case "delete":
+      store = store.filter(function (item) { return item.id != id; });
+      break;
+  }
+
+  localStorage.setItem(entity, JSON.stringify(store));
+});
+```
+
+## Backend Guides
+
+DHTMLX provides step-by-step integration guides for the most common server stacks:
+
+<CardGroup cols={2}>
+  <Card title="Node.js / Express" icon="node-js" href="https://docs.dhtmlx.com/gantt/integrations/node/howtostart-nodejs/">
+    REST API with Express and a SQL database.
+  </Card>
+  <Card title="ASP.NET Core" icon="microsoft" href="https://docs.dhtmlx.com/gantt/integrations/dotnet/howtostart-dotnet-core/">
+    Web API controllers with Entity Framework.
+  </Card>
+  <Card title="PHP / Laravel" icon="php" href="https://docs.dhtmlx.com/gantt/integrations/php/howtostart-php-laravel/">
+    Laravel resource controllers and Eloquent ORM.
+  </Card>
+  <Card title="Ruby on Rails" icon="gem" href="https://docs.dhtmlx.com/gantt/integrations/other/howtostart-ruby/">
+    Rails API with ActiveRecord models.
+  </Card>
+  <Card title="Python / Django" icon="python" href="https://docs.dhtmlx.com/gantt/integrations/other/howtostart-python/">
+    Django REST Framework with model serializers.
+  </Card>
+</CardGroup>

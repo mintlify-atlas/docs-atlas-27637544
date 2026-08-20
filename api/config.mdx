@@ -1,0 +1,492 @@
+---
+title: "gantt.config — Full Configuration Property Reference"
+sidebarTitle: "Config"
+description: "Complete reference for every gantt.config property: date format, grid columns, timeline scales, drag behavior, task types, layout, and display options."
+---
+
+`gantt.config` is the main configuration object. Properties can be set before `gantt.init()` for initial configuration, or changed at runtime — most take effect after the next call to `gantt.render()`. All property names, types, and defaults below are taken directly from `src/core/common/config.ts`.
+
+```js
+import { gantt } from "dhtmlx-gantt";
+
+// Set options before init
+gantt.config.date_format = "%Y-%m-%d";
+gantt.config.scales = [
+  { unit: "month", step: 1, date: "%F %Y" },
+  { unit: "day",   step: 1, date: "%d" }
+];
+
+gantt.init("gantt_here");
+```
+
+---
+
+## Date & Time
+
+<ParamField path="date_format" type="string" default='"%d-%m-%Y %H:%i"'>
+  The date format string used to parse incoming date strings in task data and to serialize dates back to strings. Use `"%Y-%m-%d"` for ISO dates or `"iso"` to parse/serialize as full ISO 8601. Replaces the deprecated `xml_date` property.
+</ParamField>
+
+<ParamField path="xml_date" type="string" default="undefined">
+  Deprecated alias for `date_format`. Kept for backward compatibility; prefer `date_format`.
+</ParamField>
+
+<ParamField path="start_date" type="Date | undefined" default="undefined">
+  The leftmost date shown in the timeline. When `undefined` (the default), the chart automatically determines the range from the loaded task data.
+</ParamField>
+
+<ParamField path="end_date" type="Date | undefined" default="undefined">
+  The rightmost date shown in the timeline. When `undefined`, the chart automatically determines the range.
+</ParamField>
+
+<ParamField path="duration_unit" type="TimeUnit" default='"day"'>
+  The unit in which task `duration` values are interpreted. Accepted values: `"minute"`, `"hour"`, `"day"`, `"week"`, `"month"`, `"year"`.
+</ParamField>
+
+<ParamField path="server_utc" type="boolean" default="false">
+  When `true`, dates are converted to UTC before being sent to the server and converted back on load. Useful when the browser and server are in different time zones.
+</ParamField>
+
+<ParamField path="start_on_monday" type="boolean" default="true">
+  When `true`, weeks start on Monday; when `false`, weeks start on Sunday.
+</ParamField>
+
+<ParamField path="time_step" type="number" default="60">
+  The minimum time step (in minutes) used by the time picker in the lightbox. For example, `30` gives 30-minute increments.
+</ParamField>
+
+<ParamField path="duration_step" type="number" default="1">
+  The minimum increment for the duration control in the lightbox.
+</ParamField>
+
+<ParamField path="min_duration" type="number" default="3600000">
+  The minimum allowed task duration in milliseconds. Default is one hour (60 × 60 × 1000 ms). Tasks shorter than this value are not allowed when dragging.
+</ParamField>
+
+<ParamField path="work_time" type="boolean" default="false">
+  When `true`, enables work-time calculations so that task durations skip non-working days. Requires the PRO edition's calendar API to configure working hours.
+</ParamField>
+
+<ParamField path="correct_work_time" type="boolean" default="false">
+  When `true` and `work_time` is enabled, task end dates are automatically corrected to fall on a working day.
+</ParamField>
+
+<ParamField path="skip_off_time" type="boolean" default="false">
+  When `true`, non-working intervals are visually collapsed in the timeline scale.
+</ParamField>
+
+---
+
+## Grid
+
+<ParamField path="columns" type="IColumnItem[]">
+  Array of column definition objects. Each object has a `name` key matching a task property, a `label` for the column header, optional `width`, `align` (`"left"` | `"center"` | `"right"`), `tree` flag (adds the expand/collapse toggle), `resize` flag, `hide` flag, and an optional `template` function `(task) => string`.
+
+  Default columns:
+  ```js
+  gantt.config.columns = [
+    { name: "text",       tree: true, width: "*", resize: true },
+    { name: "start_date", align: "center", resize: true },
+    { name: "duration",   align: "center" },
+    { name: "add",        width: 44 }
+  ];
+  ```
+</ParamField>
+
+<ParamField path="show_grid" type="boolean" default="true">
+  Shows or hides the grid panel entirely.
+</ParamField>
+
+<ParamField path="grid_resize" type="boolean" default="false">
+  Allows the user to drag the separator between grid and timeline to resize the grid.
+</ParamField>
+
+<ParamField path="keep_grid_width" type="boolean" default="false">
+  When `true`, resizing a column does not change the total grid width — the remaining columns absorb the change.
+</ParamField>
+
+<ParamField path="grid_elastic_columns" type="boolean" default="false">
+  When `true`, columns stretch to fill available grid width.
+</ParamField>
+
+<ParamField path="min_grid_column_width" type="number" default="70">
+  The minimum pixel width allowed when dragging a column border.
+</ParamField>
+
+<ParamField path="date_grid" type="string" default='"%Y-%m-%d"'>
+  Date format used when rendering date values in the grid (the `date_grid` template). Separate from `date_format` which controls parsing/serialization.
+</ParamField>
+
+<ParamField path="sort" type="boolean" default="false">
+  Enables column sorting by clicking column headers.
+</ParamField>
+
+<ParamField path="order_branch" type="boolean" default="false">
+  Allows reordering tasks within the same level (branch) by dragging rows.
+</ParamField>
+
+<ParamField path="order_branch_free" type="boolean" default="false">
+  Allows free reordering of tasks regardless of tree level by dragging rows.
+</ParamField>
+
+<ParamField path="resize_rows" type="boolean" default="false">
+  Enables row height resizing by dragging the row separator in the grid.
+</ParamField>
+
+<ParamField path="min_task_grid_row_height" type="number" default="30">
+  Minimum row height (pixels) when `resize_rows` is enabled.
+</ParamField>
+
+<ParamField path="row_height" type="number" default="36">
+  Default row height in pixels.
+</ParamField>
+
+<ParamField path="autofit" type="boolean" default="false">
+  When `true`, grid columns automatically expand to fill the total grid width.
+</ParamField>
+
+---
+
+## Timeline
+
+<ParamField path="scales" type="Scale[]">
+  Array of scale row configurations. Each row has `unit` (time unit), `step` (number of units per cell), and `date` (format string or function). The first entry is the primary (top) scale row.
+
+  ```js
+  gantt.config.scales = [
+    { unit: "month", step: 1, date: "%F %Y" },
+    { unit: "day",   step: 1, date: "%d" }
+  ];
+  ```
+</ParamField>
+
+<ParamField path="show_chart" type="boolean" default="true">
+  Shows or hides the timeline panel entirely.
+</ParamField>
+
+<ParamField path="scale_height" type="number">
+  Total height (pixels) of all scale rows combined. When not set, it is derived from the `scales` configuration.
+</ParamField>
+
+<ParamField path="min_column_width" type="number" default="70">
+  Minimum column width in pixels. The timeline column width is calculated as the larger of this value and the natural column size.
+</ParamField>
+
+<ParamField path="scale_offset_minimal" type="boolean" default="true">
+  When `true`, the leftmost scale cell starts at the earliest task date rather than at the start of the time unit.
+</ParamField>
+
+<ParamField path="inherit_scale_class" type="boolean" default="false">
+  When `true`, CSS classes applied to scale cells propagate to the corresponding timeline cells.
+</ParamField>
+
+<ParamField path="smart_scales" type="boolean" default="true">
+  Enables virtual rendering for scale rows — only the visible portion is drawn.
+</ParamField>
+
+<ParamField path="show_task_cells" type="boolean" default="true">
+  When `false`, the background cell grid is not drawn in the timeline.
+</ParamField>
+
+<ParamField path="static_background" type="boolean" default="false">
+  When `true`, the timeline cell background is rendered as a single canvas image rather than individual DOM cells. Improves rendering performance for very wide timelines.
+</ParamField>
+
+<ParamField path="static_background_cells" type="boolean" default="true">
+  When `static_background` is enabled, controls whether individual cells are still rendered for interactivity.
+</ParamField>
+
+<ParamField path="rtl" type="boolean" default="false">
+  Enables right-to-left mode (reverses timeline direction and grid layout).
+</ParamField>
+
+---
+
+## Task behavior
+
+<ParamField path="drag_move" type="boolean" default="true">
+  Allows tasks to be horizontally dragged to change their start date.
+</ParamField>
+
+<ParamField path="drag_resize" type="boolean" default="true">
+  Allows tasks to be resized by dragging the right edge to change their duration.
+</ParamField>
+
+<ParamField path="drag_links" type="boolean" default="true">
+  Allows dependency links to be created by dragging from a task's endpoint circle.
+</ParamField>
+
+<ParamField path="drag_progress" type="boolean" default="true">
+  Allows the progress bar handle to be dragged to adjust a task's completion percentage.
+</ParamField>
+
+<ParamField path="drag_project" type="boolean" default="false">
+  When `true`, dragging a project (summary) task also moves all its child tasks.
+</ParamField>
+
+<ParamField path="drag_multiple" type="boolean" default="true">
+  Allows multiple selected tasks to be moved simultaneously.
+</ParamField>
+
+<ParamField path="readonly" type="boolean" default="false">
+  Puts the entire chart into read-only mode — drag-and-drop, inline editing, and the lightbox are all disabled.
+</ParamField>
+
+<ParamField path="readonly_property" type="string" default='"readonly"'>
+  The task property name that makes an individual task read-only when set to `true`.
+</ParamField>
+
+<ParamField path="editable_property" type="string" default='"editable"'>
+  The task property name that makes an individual task editable even when `readonly` is `true`.
+</ParamField>
+
+<ParamField path="round_dnd_dates" type="boolean" default="true">
+  When `true`, drag-and-drop snaps task dates to the nearest scale cell boundary.
+</ParamField>
+
+<ParamField path="details_on_create" type="boolean" default="true">
+  Opens the lightbox when a new task is created by clicking the "add" button.
+</ParamField>
+
+<ParamField path="details_on_dblclick" type="boolean" default="true">
+  Opens the lightbox when the user double-clicks a task bar.
+</ParamField>
+
+<ParamField path="select_task" type="boolean" default="true">
+  Highlights a task when the user clicks it.
+</ParamField>
+
+<ParamField path="scroll_on_click" type="boolean" default="true">
+  Scrolls the timeline to make the clicked task fully visible.
+</ParamField>
+
+<ParamField path="cascade_delete" type="boolean" default="true">
+  When `true`, deleting a parent task also deletes all its children and links.
+</ParamField>
+
+<ParamField path="horizontal_scroll_key" type="TModifierKeys" default='"shiftKey"'>
+  The modifier key that turns vertical mouse-wheel into horizontal scroll. Accepted values: `"metaKey"`, `"ctrlKey"`, `"altKey"`, `"shiftKey"`, `false`. Set to `false` to disable.
+</ParamField>
+
+---
+
+## Display
+
+<ParamField path="fit_tasks" type="boolean" default="false">
+  When `true`, the timeline automatically expands to show all tasks without horizontal scrolling.
+</ParamField>
+
+<ParamField path="autosize" type="boolean | string" default="false">
+  Automatically resizes the chart to fit all content. Accepted values: `false`, `true` (same as `"y"`), `"x"`, `"y"`, `"xy"`.
+</ParamField>
+
+<ParamField path="autosize_min_width" type="number" default="0">
+  Minimum total chart width when `autosize` is enabled.
+</ParamField>
+
+<ParamField path="autoscroll" type="boolean" default="true">
+  Scrolls the timeline automatically when dragging a task near the viewport edge.
+</ParamField>
+
+<ParamField path="autoscroll_speed" type="number" default="30">
+  Speed (pixels per interval) of auto-scroll when dragging near viewport edges.
+</ParamField>
+
+<ParamField path="smart_rendering" type="boolean" default="true">
+  Enables virtual rendering — only rows and columns visible in the viewport are rendered as DOM nodes. Essential for performance with large datasets.
+</ParamField>
+
+<ParamField path="preserve_scroll" type="boolean" default="true">
+  Maintains the scroll position after `gantt.render()` is called.
+</ParamField>
+
+<ParamField path="show_progress" type="boolean" default="true">
+  Renders the progress bar inside task bars.
+</ParamField>
+
+<ParamField path="show_links" type="boolean" default="true">
+  Renders dependency link arrows in the timeline.
+</ParamField>
+
+<ParamField path="show_errors" type="boolean" default="true">
+  Shows error notifications in the browser for configuration and data errors.
+</ParamField>
+
+<ParamField path="bar_height" type='number | "full"' default='"full"'>
+  Height of task bars in pixels, or `"full"` to match the row height. Replaces the deprecated `task_height`.
+</ParamField>
+
+<ParamField path="bar_height_padding" type="number" default="9">
+  Vertical padding (pixels) between the task bar and the row boundary when `bar_height` is numeric.
+</ParamField>
+
+<ParamField path="initial_scroll" type="boolean" default="true">
+  Scrolls the timeline to the first task date when data is loaded.
+</ParamField>
+
+<ParamField path="task_scroll_offset" type="number" default="100">
+  Horizontal offset (pixels) applied when `initial_scroll` positions the view.
+</ParamField>
+
+<ParamField path="open_tree_initially" type="boolean" default="false">
+  When `true`, all project branches are expanded when data is first loaded.
+</ParamField>
+
+<ParamField path="wai_aria_attributes" type="boolean" default="true">
+  Adds WAI-ARIA accessibility attributes to task bars and grid rows.
+</ParamField>
+
+<ParamField path="show_unscheduled" type="boolean" default="true">
+  Shows tasks that have no `start_date` and `duration` in the grid (without a bar in the timeline).
+</ParamField>
+
+<ParamField path="show_tasks_outside_timescale" type="boolean" default="false">
+  When `true`, tasks outside the visible date range are still rendered as partial bars.
+</ParamField>
+
+<ParamField path="optimize_render" type="boolean" default="true">
+  Skips re-rendering DOM nodes that have not changed.
+</ParamField>
+
+<ParamField path="prevent_default_scroll" type="boolean" default="false">
+  Prevents the default browser scroll behavior when the chart is scrolled.
+</ParamField>
+
+<ParamField path="container_resize_timeout" type="number" default="20">
+  Debounce timeout (ms) for responding to container resize events.
+</ParamField>
+
+---
+
+## Task types
+
+<ParamField path="types" type="object">
+  An object mapping type names to their string keys. The built-in types are:
+  ```js
+  gantt.config.types = {
+    task:        "task",
+    project:     "project",
+    milestone:   "milestone",
+    placeholder: "placeholder"
+  };
+  ```
+  Add custom keys to define additional task types (requires `type_renderers` to supply a render function).
+</ParamField>
+
+<ParamField path="auto_types" type="boolean" default="false">
+  When `true`, the Gantt automatically promotes a task to type `"project"` when it gains children, and demotes it back to `"task"` when all children are removed.
+</ParamField>
+
+<ParamField path="type_renderers" type="object" default="{}">
+  A map of task type name → render function. Provide a custom function to control how tasks of a given type are drawn.
+</ParamField>
+
+<ParamField path="placeholder_task" type="boolean | object" default="false">
+  When `true` (or an options object), shows an empty placeholder row at the bottom of each branch that the user can click to add a new task.
+</ParamField>
+
+---
+
+## Links
+
+<ParamField path="links" type="object">
+  Link type constants. Read-only — do not change these values. Use them to compare `link.type`:
+  ```js
+  gantt.config.links.finish_to_start  // "0"
+  gantt.config.links.start_to_start   // "1"
+  gantt.config.links.finish_to_finish // "2"
+  gantt.config.links.start_to_finish  // "3"
+  ```
+</ParamField>
+
+<ParamField path="show_links" type="boolean" default="true">
+  Renders or hides all dependency link arrows.
+</ParamField>
+
+<ParamField path="link_wrapper_width" type="number" default="20">
+  Width (pixels) of the invisible click target area around each link line.
+</ParamField>
+
+<ParamField path="link_arrow_size" type="number" default="12">
+  Size (pixels) of the arrowhead at the target end of a dependency link.
+</ParamField>
+
+---
+
+## Layout
+
+<ParamField path="layout" type="ILayout">
+  The layout configuration object. The default is a two-column layout with grid and timeline side by side, sharing a horizontal scrollbar. Override to add resource views, multiple timelines, or custom HTML panels.
+
+  ```js
+  gantt.config.layout = {
+    css: "gantt_container",
+    rows: [
+      {
+        cols: [
+          { view: "grid",     scrollX: "scrollHor", scrollY: "scrollVer" },
+          { resizer: true,    width: 1 },
+          { view: "timeline", scrollX: "scrollHor", scrollY: "scrollVer" },
+          { view: "scrollbar", id: "scrollVer" }
+        ]
+      },
+      { view: "scrollbar", id: "scrollHor", height: 20 }
+    ]
+  };
+  ```
+
+  Available view types: `"grid"`, `"timeline"`, `"resourceGrid"`, `"resourceTimeline"`, `"scrollbar"`.
+</ParamField>
+
+---
+
+## Lightbox
+
+<ParamField path="lightbox" type="object">
+  Configures the lightbox (task edit form). Has three sub-arrays for different task types:
+
+  ```js
+  gantt.config.lightbox = {
+    sections: [           // for type: "task"
+      { name: "description", height: 70, map_to: "text", type: "textarea", focus: true },
+      { name: "time",        type: "duration", map_to: "auto" }
+    ],
+    project_sections: [   // for type: "project"
+      { name: "description", height: 70, map_to: "text", type: "textarea", focus: true },
+      { name: "type",        type: "typeselect", map_to: "type" },
+      { name: "time",        type: "duration",   map_to: "auto", readonly: true }
+    ],
+    milestone_sections: [ // for type: "milestone"
+      { name: "description", height: 70, map_to: "text", type: "textarea", focus: true },
+      { name: "type",        type: "typeselect",  map_to: "type" },
+      { name: "time",        type: "duration",    map_to: "auto", single_date: true }
+    ]
+  };
+  ```
+
+  Section types: `"textarea"`, `"time"`, `"duration"`, `"select"`, `"typeselect"`, `"parent"`, `"template"`, `"checkbox"`, `"radio"`, `"resources"`, `"constraint"`.
+</ParamField>
+
+<ParamField path="drag_lightbox" type="boolean" default="true">
+  Allows the lightbox dialog to be dragged to a new position.
+</ParamField>
+
+<ParamField path="buttons_left" type="string[]" default='["gantt_save_btn","gantt_cancel_btn"]'>
+  IDs of buttons shown on the left side of the lightbox footer.
+</ParamField>
+
+<ParamField path="buttons_right" type="string[]" default='["gantt_delete_btn"]'>
+  IDs of buttons shown on the right side of the lightbox footer.
+</ParamField>
+
+---
+
+## Auto-scheduling
+
+<ParamField path="auto_scheduling" type="object" default="{}">
+  Configuration for the auto-scheduling extension (PRO). Pass an object with scheduling options. In the Community Edition this property is accepted but has no effect unless the scheduling extension is loaded.
+</ParamField>
+
+<ParamField path="deadlines" type="boolean" default="true">
+  Enables the deadline visual marker feature (PRO). In Community builds the property is accepted but has no visual effect.
+</ParamField>

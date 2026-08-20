@@ -1,0 +1,175 @@
+---
+title: Accessibility, WAI-ARIA, and Keyboard Navigation
+sidebarTitle: Accessibility
+description: Configure WAI-ARIA support, keyboard navigation, touch input, and CSP-compliant mode in DHTMLX Gantt to meet accessibility standards.
+---
+
+DHTMLX Gantt is built with accessibility in mind. It outputs WAI-ARIA roles and labels on all interactive elements out of the box, supports an optional keyboard navigation plugin for screenreader-friendly task management, handles touch input without any extra configuration, and ships a Content Security Policy (CSP) compliant rendering mode. This page covers each capability and the relevant configuration properties.
+
+## WAI-ARIA support
+
+Gantt automatically annotates its DOM elements with ARIA roles and attributes whenever `gantt.config.wai_aria_attributes` is `true` (the default). This makes the chart recognizable to screenreaders and other assistive technologies.
+
+Key roles applied by the library:
+
+| Element | ARIA role / attributes |
+|---|---|
+| Grid panel | `role="treegrid"`, `aria-multiselectable` |
+| Grid header row | `role="row"` |
+| Column header cell | `role="columnheader"`, `aria-sort` (when sorted) |
+| Task row | `role="row"`, `aria-level`, `aria-selected`, `aria-expanded` |
+| Task bar | `role="img"`, `aria-label` (tooltip text), `aria-grabbed` |
+| Grid cell | `role="gridcell"`, `aria-label`, `aria-readonly` |
+| Dependency link | `role="img"`, `aria-label` |
+| Lightbox dialog | `role="dialog"`, `aria-hidden` |
+| Lightbox heading | `role="heading"`, `aria-level="1"` |
+| Lightbox buttons | `role="button"`, `aria-label`, `tabindex="0"` |
+| Alert messages | `role="alert"` |
+| Quick Info popup | `role="dialog"` |
+| Tooltip | `role="tooltip"`, `aria-hidden` |
+
+The `aria-label` on task bars uses the same text as the tooltip template, so users of assistive technologies receive the same task summary as sighted users.
+
+### Enabling and disabling WAI-ARIA
+
+```js
+// Enabled by default — no action required
+gantt.config.wai_aria_attributes = true;
+
+// Disable only when WAI-ARIA conflicts with a host application
+gantt.config.wai_aria_attributes = false;
+```
+
+## Keyboard navigation
+
+The keyboard navigation plugin lets users move through tasks and open the edit lightbox using only the keyboard, without a mouse. It is an opt-in plugin that must be activated before `gantt.init()`.
+
+### Activating the plugin
+
+```js
+gantt.plugins({
+  keyboard_navigation: true
+});
+
+gantt.init("gantt_here");
+```
+
+### Default keyboard shortcuts
+
+| Key | Action |
+|---|---|
+| `↑` / `↓` | Move focus to the previous / next task row |
+| `←` / `→` | Collapse / expand a project node; move between cells when `keyboard_navigation_cells` is enabled |
+| `Enter` | Open the lightbox for the focused task |
+| `Delete` | Delete the focused task (with confirmation) |
+| `Space` | Select / deselect the focused task |
+
+### Cell-level navigation
+
+By default, keyboard navigation moves focus between **rows**. Set `keyboard_navigation_cells` to `true` to move focus between individual **grid cells** instead, which provides a finer-grained navigation experience for data entry:
+
+```js
+gantt.plugins({
+  keyboard_navigation: true
+});
+
+gantt.config.keyboard_navigation_cells = true;
+
+gantt.init("gantt_here");
+```
+
+When cell navigation is active, `Tab` moves to the next editable cell and triggers inline editing where configured.
+
+### Keyboard navigation with multiple instances
+
+Each Gantt instance activates keyboard navigation independently. Focus follows the instance the user last clicked:
+
+```js
+const gantt1 = gantt; // default singleton
+gantt1.plugins({ keyboard_navigation: true });
+gantt1.init("gantt_here");
+
+const gantt2 = Gantt.getGanttInstance();
+gantt2.plugins({ keyboard_navigation: true });
+gantt2.init("gantt_here2");
+```
+
+## Touch support
+
+DHTMLX Gantt includes built-in touch support — drag-and-drop, pinch-to-zoom on the timeline, and scrolling all work on iOS and Android without any additional configuration or plugins. No code changes are needed to enable touch interaction.
+
+## Content Security Policy (CSP) mode
+
+Some deployment environments enforce a strict Content Security Policy that disallows `eval()` and `new Function()`. Gantt ships a CSP-compliant rendering mode that replaces dynamic code generation with pre-compiled alternatives.
+
+```js
+// "auto" (default) — use CSP-safe mode only when a strict CSP is detected
+gantt.config.csp = "auto";
+
+// true — always use CSP-safe date formatting (recommended for strict CSP environments)
+gantt.config.csp = true;
+
+// false — allow dynamic code paths (not recommended under strict CSP)
+gantt.config.csp = false;
+```
+
+The `csp` option controls whether the internal date-formatting methods use `new Function()` (fast but blocked by `unsafe-eval` CSP directives) or a pre-compiled equivalent. The `"auto"` default detects the environment at runtime and switches automatically, which covers most cases without any manual configuration.
+
+<Warning>
+  If your CSP explicitly denies `unsafe-eval` and you see console errors about blocked `eval` calls, set `gantt.config.csp = true` **before** calling `gantt.init()`. Changing it after initialization has no effect on already-compiled formatting functions.
+</Warning>
+
+## Accessibility configuration reference
+
+<ResponseField name="gantt.config.wai_aria_attributes" type="boolean" default="true">
+  Enables WAI-ARIA role and attribute annotations on all chart elements. Disable only when the host application provides its own accessibility layer and the Gantt ARIA markup causes conflicts.
+</ResponseField>
+
+<ResponseField name="gantt.config.keyboard_navigation_cells" type="boolean" default="false">
+  When the `keyboard_navigation` plugin is active, controls whether focus moves between individual grid **cells** (`true`) or between task **rows** (`false`). Cell-level navigation integrates with inline editing.
+</ResponseField>
+
+<ResponseField name="gantt.config.csp" type="boolean | 'auto'" default='"auto"'>
+  Controls Content Security Policy compatibility. `"auto"` detects strict CSP at runtime. `true` always uses pre-compiled date formatting. `false` uses dynamic `new Function()` calls (not safe under strict CSP).
+</ResponseField>
+
+## Full accessibility setup example
+
+The following snippet combines all accessibility features into a single initialization block:
+
+```js
+import { gantt } from "dhtmlx-gantt";
+import "dhtmlx-gantt/codebase/dhtmlxgantt.css";
+
+// 1. Enable keyboard navigation plugin
+gantt.plugins({
+  keyboard_navigation: true
+});
+
+// 2. WAI-ARIA is on by default; confirm explicitly
+gantt.config.wai_aria_attributes = true;
+
+// 3. Cell-level keyboard navigation for data-entry workflows
+gantt.config.keyboard_navigation_cells = true;
+
+// 4. CSP-safe date formatting for strict CSP environments
+gantt.config.csp = true;
+
+gantt.init("gantt_here");
+
+gantt.parse({
+  data: [
+    { id: 1, text: "Research",      start_date: "2024-06-01", duration: 4 },
+    { id: 2, text: "Design",        start_date: "2024-06-05", duration: 6 },
+    { id: 3, text: "Implementation",start_date: "2024-06-11", duration: 8 }
+  ],
+  links: [
+    { id: 1, source: 1, target: 2, type: "0" },
+    { id: 2, source: 2, target: 3, type: "0" }
+  ]
+});
+```
+
+<Tip>
+  To verify WAI-ARIA output, open the browser DevTools accessibility tree while hovering over a task bar. You should see `role="img"` and an `aria-label` containing the task's start date, end date, and name — the same text shown in the tooltip.
+</Tip>
